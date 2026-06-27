@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 刷题问答</title>
+  <style>
+    :root {
+      --bg: #0d0e1a;
+      --surface: #161628;
+      --card: #1a1a2e;
+      --text: #e8e8f0;
+      --muted: #9898b0;
+      --accent: #059669;
+      --accent2: #10b981;
+      --warning: #f59e0b;
+      --error: #f43f5e;
+      --info: #3b82f6;
+      --border: rgba(255,255,255,0.08);
+      --user-bg: #1e3a5f;
+      --ai-bg: #1a2e3a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 1rem;
+      min-height: 100vh;
+    }
+    h1 { text-align: center; margin-bottom: 0.2rem; font-size: 1.3rem; }
+    .subtitle { text-align: center; color: var(--muted); margin-bottom: 1rem; font-size: 0.8rem; }
+
+    /* 布局 */
+    .container {
+      display: flex;
+      gap: 1rem;
+      height: calc(100vh - 100px);
+      min-height: 500px;
+    }
+
+    /* 左侧题目列表 */
+    .sidebar {
+      width: 280px;
+      flex-shrink: 0;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .bank-select {
+      width: 100%;
+      padding: 0.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.85rem;
+      margin: 0.5rem;
+      font-family: inherit;
+    }
+    .bank-select:focus { outline: none; border-color: var(--accent); }
+    .question-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.5rem;
+    }
+    .q-item {
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      margin-bottom: 0.25rem;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .q-item:hover { background: var(--surface); }
+    .q-item.active { background: var(--accent); color: #fff; }
+    .q-item .q-num { color: var(--muted); min-width: 30px; }
+    .q-item.active .q-num { color: rgba(255,255,255,0.7); }
+    .q-type {
+      font-size: 0.65rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.1);
+    }
+
+    /* 右侧聊天区 */
+    .chat-area {
+      flex: 1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .chat-header {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .chat-title { font-weight: 600; font-size: 0.9rem; }
+    .chat-meta { font-size: 0.75rem; color: var(--muted); }
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .msg {
+      max-width: 85%;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      font-size: 0.88rem;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .msg.user {
+      align-self: flex-end;
+      background: var(--user-bg);
+      border-bottom-right-radius: 4px;
+    }
+    .msg.ai {
+      align-self: flex-start;
+      background: var(--ai-bg);
+      border-bottom-left-radius: 4px;
+    }
+    .msg.loading {
+      color: var(--muted);
+      font-style: italic;
+    }
+    .msg .sender {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-bottom: 0.25rem;
+      font-weight: 600;
+    }
+    .msg.user .sender { text-align: right; color: rgba(255,255,255,0.5); }
+    .msg.ai .sender { color: var(--accent2); }
+
+    /* 输入区 */
+    .input-area {
+      padding: 0.75rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 0.5rem;
+    }
+    .input-area textarea {
+      flex: 1;
+      padding: 0.6rem 0.75rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.88rem;
+      font-family: inherit;
+      resize: none;
+      min-height: 42px;
+      max-height: 120px;
+      line-height: 1.5;
+    }
+    .input-area textarea:focus { outline: none; border-color: var(--accent); }
+    .input-area textarea::placeholder { color: var(--muted); }
+    .send-btn {
+      padding: 0.6rem 1rem;
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .send-btn:hover { filter: brightness(1.1); }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* 空状态 */
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      color: var(--muted);
+    }
+    .empty-state svg { opacity: 0.5; }
+    .empty-state p { font-size: 0.9rem; }
+
+    /* API配置提示 */
+    .api-hint {
+      background: rgba(244, 63, 94, 0.15);
+      border: 1px solid var(--error);
+      border-radius: 8px;
+      padding: 0.75rem;
+      margin: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--error);
+    }
+
+    /* 响应式 */
+    @media (max-width: 768px) {
+      .container { flex-direction: column; height: auto; }
+      .sidebar { width: 100%; max-height: 300px; }
+      .chat-area { min-height: 400px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>AI 刷题问答</h1>
+  <p class="subtitle">选择题目，AI 帮你分析解答</p>
+
+  <div class="container">
+    <!-- 左侧：题目列表 -->
+    <div class="sidebar">
+      <div class="sidebar-header">选择题库</div>
+      <select class="bank-select" id="bankSelect" onchange="loadBank()">
+        <option value="">-- 请选择题库 --</option>
+      </select>
+      <div class="question-list" id="questionList">
+        <div style="padding:1rem;text-align:center;color:var(--muted);font-size:0.85rem;">
+          请先选择题库
+        </div>
+      </div>
+    </div>
+
+    <!-- 右侧：聊天区域 -->
+    <div class="chat-area">
+      <div class="chat-header">
+        <span class="chat-title" id="chatTitle">AI 刷题助手</span>
+        <span class="chat-meta" id="chatMeta">请选择一道题目开始问答</span>
+      </div>
+
+      <div class="chat-messages" id="chatMessages">
+        <div class="empty-state">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <p>选择题目后，AI 将帮你解答疑问</p>
+          <p style="font-size:0.75rem;">支持单选题、多选题、填空题、简答题</p>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <textarea id="userInput" placeholder="输入你的问题..." rows="1" onkeydown="handleKeyDown(event)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">发送</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== 状态 =====
+    let currentQuestion = null;
+    let messages = [];
+    let banks = [];
+    let questions = [];
+    let apiConfigured = false;
+    let loading = false;
+
+    // ===== 加载题库列表 =====
+    async function loadBanks() {
+      try {
+        // 尝试从后端加载题库列表
+        const res = await fetch('/api/banks');
+        if (res.ok) {
+          const data = await res.json();
+          banks = data.banks || [];
+        }
+      } catch (e) {
+        console.log('后端未启动，尝试加载本地题库');
+      }
+
+      // 如果后端没有，尝试加载内置题库
+      if (banks.length === 0) {
+        try {
+          const res = await fetch('/banks/banks.json');
+          if (res.ok) {
+            const data = await res.json();
+            banks = data.banks || [];
+          }
+        } catch (e) {}
+      }
+
+      // 填充下拉框
+      const select = document.getElementById('bankSelect');
+      select.innerHTML = '<option value="">-- 请选择题库 --</option>';
+      banks.forEach(bank => {
+        const opt = document.createElement('option');
+        opt.value = bank.id || bank.name;
+        opt.textContent = bank.name;
+        select.appendChild(opt);
+      });
+
+      if (banks.length > 0) {
+        select.value = banks[0].id || banks[0].name;
+        loadBank();
+      }
+    }
+
+    // ===== 加载题库题目 =====
+    async function loadBank() {
+      const select = document.getElementById('bankSelect');
+      const bankId = select.value;
+      if (!bankId) return;
+
+      const bank = banks.find(b => (b.id || b.name) === bankId);
+      if (!bank) return;
+
+      questions = [];
+
+      try {
+        // 尝试从后端加载
+        const res = await fetch(`/api/banks/${bankId}`);
+        if (res.ok) {
+          questions = await res.json();
+        }
+      } catch (e) {}
+
+      // 尝试加载内置题库
+      if (questions.length === 0 && bank.file) {
+        try {
+          const res = await fetch(`/banks/${bank.file}`);
+          if (res.ok) {
+            const text = await res.text();
+            // 从 markdown 中提取 JSON
+            const match = text.match(/```json\n([\s\S]*?)\n```/);
+            if (match) {
+              const data = JSON.parse(match[1]);
+              questions = data.questions || data;
+            }
+          }
+        } catch (e) {}
+      }
+
+      renderQuestionList();
+    }
+
+    // ===== 渲染题目列表 =====
+    function renderQuestionList() {
+      const list = document.getElementById('questionList');
+      if (questions.length === 0) {
+        list.innerHTML = '<div style="padding:1rem;text-align:center;color:var(--muted);font-size:0.85rem;">该题库暂无题目</div>';
+        return;
+      }
+
+      list.innerHTML = '';
+      questions.forEach((q, i) => {
+        const item = document.createElement('div');
+        item.className = 'q-item';
+        item.onclick = () => selectQuestion(i);
+
+        const typeNames = { single: '单选', multi: '多选', fill: '填空', essay: '简答' };
+        const typeName = typeNames[q.type] || '其他';
+
+        item.innerHTML = `
+          <span class="q-num">${q.id || (i+1)}.</span>
+          <span class="q-type">${typeName}</span>
+          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(q.question || '').substring(0, 30)}...</span>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    // ===== 选择题目 =====
+    function selectQuestion(idx) {
+      currentQuestion = questions[idx];
+      messages = [];
+      renderMessages();
+      renderQuestionList();
+
+      // 更新聊天标题
+      const typeNames = { single: '单选题', multi: '多选题', fill: '填空题', essay: '简答题' };
+      document.getElementById('chatTitle').textContent = `第 ${currentQuestion.id || (idx+1)} 题`;
+      document.getElementById('chatMeta').textContent = typeNames[currentQuestion.type] || '';
+
+      // 选中高亮
+      document.querySelectorAll('.q-item').forEach((item, i) => {
+        item.classList.toggle('active', i === idx);
+      });
+    }
+
+    // ===== 渲染消息 =====
+    function renderMessages() {
+      const container = document.getElementById('chatMessages');
+      if (messages.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <p>选择题目后，AI 将帮你解答疑问</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = '';
+      messages.forEach(msg => {
+        const div = document.createElement('div');
+        div.className = `msg ${msg.role}`;
+        if (msg.loading) div.classList.add('loading');
+
+        const sender = msg.role === 'user' ? '你' : 'AI 助手';
+        div.innerHTML = `
+          <div class="sender">${sender}</div>
+          <div class="content">${escapeHtml(msg.content)}</div>
+        `;
+        container.appendChild(div);
+      });
+
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ===== 发送消息 =====
+    async function sendMessage() {
+      const input = document.getElementById('userInput');
+      const text = input.value.trim();
+      if (!text || !currentQuestion || loading) return;
+
+      // 添加用户消息
+      messages.push({ role: 'user', content: text });
+      input.value = '';
+      renderMessages();
+
+      // 添加AI加载状态
+      messages.push({ role: 'ai', content: '', loading: true });
+      renderMessages();
+
+      loading = true;
+      document.getElementById('sendBtn').disabled = true;
+
+      try {
+        // 构建上下文
+        let context = buildContext(currentQuestion);
+        context += `\n\n用户问题：${text}`;
+
+        // 调用AI（这里需要配置API）
+        const answer = await callAI(context);
+
+        // 替换加载消息
+        const loadingIdx = messages.findIndex(m => m.loading);
+        if (loadingIdx !== -1) {
+          messages[loadingIdx] = { role: 'ai', content: answer };
+        }
+      } catch (e) {
+        const loadingIdx = messages.findIndex(m => m.loading);
+        if (loadingIdx !== -1) {
+          messages[loadingIdx] = { role: 'ai', content: `抱歉，AI 服务暂时不可用。\n\n错误信息：${e.message}\n\n请检查 AI API 配置是否正确。` };
+        }
+      }
+
+      loading = false;
+      document.getElementById('sendBtn').disabled = false;
+      renderMessages();
+    }
+
+    function buildContext(q) {
+      let ctx = `【题目信息】\n`;
+      ctx += `题型：${q.type === 'single' ? '单选题' : q.type === 'multi' ? '多选题' : q.type === 'fill' ? '填空题' : '简答题'}\n`;
+      ctx += `题目ID：${q.id}\n`;
+      ctx += `分值：${q.score || '未知'}分\n\n`;
+      ctx += `【题目内容】\n${q.question}\n\n`;
+
+      if (q.options && q.options.length > 0) {
+        ctx += `【选项】\n`;
+        q.options.forEach(opt => {
+          ctx += `${opt.label}. ${opt.text}\n`;
+        });
+        ctx += '\n';
+      }
+
+      if (q.blanks && q.blanks > 0) {
+        ctx += `【填空数量】${q.blanks}个空\n\n`;
+      }
+
+      if (q.answer) {
+        if (Array.isArray(q.answer)) {
+          ctx += `【参考答案】${q.answer.join(', ')}\n\n`;
+        } else {
+          ctx += `【参考答案】${q.answer}\n\n`;
+        }
+      }
+
+      ctx += `请根据以上信息，回答用户的问题。`;
+      return ctx;
+    }
+
+    async function callAI(prompt) {
+      // 获取API配置
+      const configRes = await fetch('/api/ai/config');
+      let config = {};
+      if (configRes.ok) {
+        config = await configRes.json();
+      }
+
+      if (!config.apiKey) {
+        throw new Error('AI API 未配置。请前往设置页面配置 API Key。');
+      }
+
+      const res = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: prompt }],
+          model: config.model || 'gpt-3.5-turbo'
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error(`API 请求失败：${res.status}`);
+      }
+
+      const data = await res.json();
+      return data.choices[0].message.content;
+    }
+
+    function handleKeyDown(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    }
+
+    // 初始化
+    loadBanks();
+  </script>
+</body>
+</html>

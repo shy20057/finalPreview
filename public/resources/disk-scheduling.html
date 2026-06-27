@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>磁盘调度算法动画演示</title>
+  <style>
+    :root {
+      --bg: #0d0e1a;
+      --surface: #161628;
+      --card: #1a1a2e;
+      --text: #e8e8f0;
+      --muted: #9898b0;
+      --accent: #7c8dbd;
+      --accent2: #6b8cce;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --error: #f43f5e;
+      --border: rgba(255,255,255,0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'SimSun', '宋体', 'STSong', serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 1.5rem;
+      min-height: 100vh;
+    }
+    h1 { text-align: center; margin-bottom: 0.5rem; font-size: 1.5rem; }
+    .subtitle { text-align: center; color: var(--muted); margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+    .field { display: flex; flex-direction: column; gap: 0.35rem; }
+    .field label { font-size: 0.85rem; color: var(--muted); }
+    .field input, .field select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.55rem 0.75rem;
+      color: var(--text);
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+    .field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    button {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.55rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    button:hover { border-color: var(--accent); color: var(--accent); }
+    button.primary {
+      background: linear-gradient(135deg, #5a6fa0 0%, #6b8cce 100%);
+      border: none;
+      color: #fff;
+    }
+    button.primary:hover { filter: brightness(1.1); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .algo-desc {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin: 0.75rem 0 0.25rem;
+      padding: 0.75rem;
+      background: var(--surface);
+      border-radius: 8px;
+      border-left: 3px solid var(--accent);
+    }
+    .visuals {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .canvas-wrap {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      min-height: 380px;
+      display: flex;
+      flex-direction: column;
+    }
+    .canvas-title {
+      position: absolute;
+      top: 12px;
+      left: 16px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      background: rgba(13,14,26,0.7);
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      pointer-events: none;
+    }
+    canvas { display: block; width: 100%; height: 360px; }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.75rem;
+    }
+    .legend span { display: flex; align-items: center; gap: 0.35rem; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .status {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      font-size: 0.9rem;
+      margin-top: 0.75rem;
+    }
+    .status span { color: var(--muted); }
+    .status b { color: var(--text); margin-left: 0.25rem; }
+    .sequence {
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .sequence b { color: var(--accent); }
+    .formula {
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      background: rgba(124,141,189,0.08);
+      padding: 0.6rem 0.75rem;
+      border-radius: 6px;
+    }
+    .annotation {
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      background: rgba(124,141,189,0.08);
+      padding: 0.6rem 0.75rem;
+      border-radius: 6px;
+      line-height: 1.5;
+    }
+    .annotation b { color: var(--accent); }
+    .explanation {
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--text);
+      background: rgba(34,197,94,0.08);
+      border-left: 3px solid var(--success);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      line-height: 1.6;
+    }
+    .explanation h4 { color: var(--success); margin-bottom: 0.5rem; font-size: 0.9rem; }
+    .explanation ol { margin-left: 1.2rem; color: var(--muted); }
+    .explanation li { margin-bottom: 0.25rem; }
+    .explanation .highlight { color: var(--accent); font-weight: bold; }
+    @media (max-width: 900px) {
+      .visuals { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      body { padding: 0.75rem; }
+      .controls { grid-template-columns: 1fr; }
+      canvas { height: 280px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>磁盘调度算法动画演示</h1>
+  <p class="subtitle">FCFS / SSTF / SCAN / CSCAN / FSCAN</p>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="field">
+        <label>当前磁头位置</label>
+        <input id="startHead" type="number" value="50" />
+      </div>
+      <div class="field">
+        <label>请求队列（逗号分隔）</label>
+        <input id="requests" type="text" value="95,180,34,119,11,62,64,92" />
+      </div>
+      <div class="field">
+        <label>最大磁道号</label>
+        <input id="maxCyl" type="number" value="200" />
+      </div>
+      <div class="field">
+        <label>SCAN/CSCAN 初始方向</label>
+        <select id="direction">
+          <option value="right">向大号（→）</option>
+          <option value="left">向小号（←）</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-group">
+      <button class="primary" onclick="run('FCFS')">FCFS 先来先服务</button>
+      <button class="primary" onclick="run('SSTF')">SSTF 最短寻道优先</button>
+      <button class="primary" onclick="run('SCAN')">SCAN 扫描算法</button>
+      <button class="primary" onclick="run('CSCAN')">CSCAN 循环扫描</button>
+      <button class="primary" onclick="run('FSCAN')">FSCAN 双队列扫描</button>
+      <button onclick="reset()">重置</button>
+    </div>
+    <div id="desc" class="algo-desc">点击上方按钮选择算法，观察磁头移动轨迹。左侧为线性轨迹，右侧为圆形盘面视图。</div>
+  </div>
+
+  <div class="visuals">
+    <div class="canvas-wrap">
+      <span class="canvas-title">线性磁头移动轨迹</span>
+      <canvas id="diskCanvas"></canvas>
+    </div>
+    <div class="canvas-wrap">
+      <span class="canvas-title">圆形盘面视图（半径=磁道号，角度=时间步）</span>
+      <canvas id="circleCanvas"></canvas>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><span class="dot" style="background:#7c8dbd"></span> 磁头</span>
+    <span><span class="dot" style="background:#22c55e"></span> 已处理请求</span>
+    <span><span class="dot" style="background:#f43f5e"></span> 待处理请求</span>
+    <span><span class="dot" style="background:#f59e0b"></span> 路径轨迹</span>
+  </div>
+  <div class="annotation">
+    <b>节点标注说明：</b>线性轨迹中，每个圆点上方数字表示当前磁头所在的<b>磁道号</b>；左侧数字表示<b>处理步序号</b>。箭头上的数字表示相邻两步之间的<b>磁道距离</b>。
+  </div>
+
+  <div class="status">
+    <span>总移动磁道数：<b id="totalMovement">0</b></span>
+    <span>平均寻道长度：<b id="avgSeek">0</b></span>
+  </div>
+  <div class="sequence">处理顺序：<b id="sequence">-</b></div>
+  <div class="formula" id="formula">算法说明将显示在这里</div>
+  <div class="explanation" id="explanation" style="display:none"></div>
+
+  <script>
+    const canvas = document.getElementById('diskCanvas')
+    const ctx = canvas.getContext('2d')
+    const circleCanvas = document.getElementById('circleCanvas')
+    const circleCtx = circleCanvas.getContext('2d')
+    let animId = null
+    let currentState = null
+
+    function resize() {
+      const rect = canvas.parentElement.getBoundingClientRect()
+      canvas.width = rect.width * window.devicePixelRatio
+      canvas.height = rect.height * window.devicePixelRatio
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
+
+      const cRect = circleCanvas.parentElement.getBoundingClientRect()
+      circleCanvas.width = cRect.width * window.devicePixelRatio
+      circleCanvas.height = cRect.height * window.devicePixelRatio
+      circleCtx.scale(window.devicePixelRatio, window.devicePixelRatio)
+
+      if (currentState) {
+        drawLinear(currentState)
+        drawCircle(currentState)
+      }
+    }
+    window.addEventListener('resize', resize)
+
+    const descriptions = {
+      FCFS: 'FCFS（先来先服务）：按照请求到达的顺序依次处理，公平但磁头移动可能很长。',
+      SSTF: 'SSTF（最短寻道时间优先）：每次选择离当前磁头最近的请求处理，减少平均寻道时间，但可能产生饥饿。',
+      SCAN: 'SCAN（扫描算法）：磁头沿一个方向移动并处理沿途请求，到达磁盘末端后反向扫描。',
+      CSCAN: 'CSCAN（循环扫描算法）：磁头只向一个方向移动，到达末端后直接跳回起点继续同方向扫描。',
+      FSCAN: 'FSCAN（双队列扫描算法）：将请求分为两个队列，先处理当前队列中的请求，新到达的请求进入另一个队列等待。'
+    }
+
+    const orderRules = {
+      FCFS: '按请求到达的先后顺序依次处理。',
+      SSTF: '每次从尚未处理的请求中，挑选与当前磁头位置距离最近的请求先处理。',
+      SCAN: '先按指定方向移动磁头，沿途遇到请求就处理；到达磁盘端点后掉头，继续处理另一侧请求。',
+      CSCAN: '只按指定方向移动磁头，沿途遇到请求就处理；到达末端后立刻跳回磁盘另一端，并保持原方向继续扫描。',
+      FSCAN: '把请求分为当前队列和等待队列。先按 SCAN 规则处理当前队列；处理期间新请求进入等待队列；当前队列完成后，再处理等待队列。'
+    }
+
+    function parseInput() {
+      const start = parseInt(document.getElementById('startHead').value, 10) || 0
+      const maxCyl = parseInt(document.getElementById('maxCyl').value, 10) || 200
+      const raw = document.getElementById('requests').value
+      const requests = raw.split(/[,，\s]+/).filter(Boolean).map(Number).filter(n => !isNaN(n) && n >= 0 && n <= maxCyl)
+      const direction = document.getElementById('direction').value
+      return { start, maxCyl, requests, direction }
+    }
+
+    function computeFCFS(start, requests) {
+      return [start, ...requests]
+    }
+
+    function computeSSTF(start, requests) {
+      const remaining = [...requests]
+      const path = [start]
+      let current = start
+      while (remaining.length) {
+        let idx = 0
+        let minDist = Math.abs(remaining[0] - current)
+        for (let i = 1; i < remaining.length; i++) {
+          const d = Math.abs(remaining[i] - current)
+          if (d < minDist) { minDist = d; idx = i }
+        }
+        current = remaining[idx]
+        path.push(current)
+        remaining.splice(idx, 1)
+      }
+      return path
+    }
+
+    function computeSCAN(start, requests, maxCyl, direction) {
+      const sorted = [...requests].sort((a, b) => a - b)
+      const path = [start]
+      const lower = sorted.filter(r => r < start)
+      const higher = sorted.filter(r => r >= start)
+      if (direction === 'right') {
+        higher.forEach(r => path.push(r))
+        path.push(maxCyl)
+        lower.reverse().forEach(r => path.push(r))
+      } else {
+        lower.reverse().forEach(r => path.push(r))
+        path.push(0)
+        higher.forEach(r => path.push(r))
+      }
+      return path
+    }
+
+    function computeCSCAN(start, requests, maxCyl, direction) {
+      const sorted = [...requests].sort((a, b) => a - b)
+      const path = [start]
+      const lower = sorted.filter(r => r < start)
+      const higher = sorted.filter(r => r >= start)
+      if (direction === 'right') {
+        higher.forEach(r => path.push(r))
+        path.push(maxCyl)
+        path.push(0)
+        lower.forEach(r => path.push(r))
+      } else {
+        lower.reverse().forEach(r => path.push(r))
+        path.push(0)
+        path.push(maxCyl)
+        higher.reverse().forEach(r => path.push(r))
+      }
+      return path
+    }
+
+    function computeFSCAN(start, requests, maxCyl, direction) {
+      const mid = Math.ceil(requests.length / 2)
+      const q1 = requests.slice(0, mid)
+      const q2 = requests.slice(mid)
+      const path1 = computeSCAN(start, q1, maxCyl, direction)
+      const last = path1[path1.length - 1]
+      const path2 = computeSCAN(last, q2, maxCyl, direction)
+      return { path1, path2, q1, q2 }
+    }
+
+    function drawLinearStatic(state) {
+      const width = canvas.getBoundingClientRect().width
+      const height = canvas.getBoundingClientRect().height
+      const margin = { top: 40, right: 50, bottom: 60, left: 50 }
+      const chartW = width - margin.left - margin.right
+      const chartH = height - margin.top - margin.bottom
+      const xScale = chartW / state.maxCyl
+      const yStep = chartH / (state.path.length - 1 || 1)
+
+      ctx.clearRect(0, 0, width, height)
+
+      ctx.fillStyle = '#e8e8f0'
+      ctx.font = 'bold 14px "宋体", SimSun, serif'
+      ctx.textAlign = 'left'
+      ctx.fillText(state.algo + ' 磁头移动轨迹', margin.left, 24)
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(margin.left, margin.top)
+      ctx.lineTo(margin.left, height - margin.bottom)
+      ctx.lineTo(width - margin.right, height - margin.bottom)
+      ctx.stroke()
+
+      ctx.fillStyle = '#9898b0'
+      ctx.font = '11px "宋体", SimSun, serif'
+      ctx.textAlign = 'center'
+      for (let i = 0; i <= 10; i++) {
+        const val = Math.round((state.maxCyl / 10) * i)
+        const x = margin.left + val * xScale
+        ctx.beginPath(); ctx.moveTo(x, height - margin.bottom); ctx.lineTo(x, height - margin.bottom + 5); ctx.stroke()
+        ctx.fillText(String(val), x, height - margin.bottom + 18)
+      }
+
+      ctx.textAlign = 'right'
+      ctx.fillStyle = '#9898b0'
+      for (let i = 0; i < state.path.length; i++) {
+        const y = margin.top + i * yStep
+        ctx.fillText(String(i), margin.left - 8, y + 4)
+      }
+
+      ctx.save()
+      ctx.translate(16, margin.top + chartH / 2)
+      ctx.rotate(-Math.PI / 2)
+      ctx.textAlign = 'center'
+      ctx.font = '11px "宋体", SimSun, serif'
+      ctx.fillStyle = '#9898b0'
+      ctx.fillText('处理步序号', 0, 0)
+      ctx.restore()
+
+      ctx.textAlign = 'right'
+      ctx.fillStyle = '#9898b0'
+      ctx.fillText('磁道号 →', width - margin.right, height - margin.bottom + 32)
+
+      ctx.strokeStyle = 'rgba(245, 158, 11, 0.3)'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      state.path.forEach((pos, i) => {
+        const x = margin.left + pos * xScale
+        const y = margin.top + i * yStep
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y)
+      })
+      ctx.stroke()
+
+      state.requests.forEach(r => {
+        const x = margin.left + r * xScale
+        const y = height - margin.bottom + 10
+        ctx.fillStyle = '#f43f5e'
+        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill()
+      })
+
+      state.path.forEach((pos, i) => {
+        const x = margin.left + pos * xScale
+        const y = margin.top + i * yStep
+        ctx.fillStyle = i === 0 ? '#7c8dbd' : '#22c55e'
+        ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill()
+        ctx.fillStyle = '#e8e8f0'
+        ctx.font = '10px "宋体", SimSun, serif'
+        ctx.textAlign = 'center'
+        ctx.fillText(String(pos), x, y - 10)
+      })
+
+      ctx.font = '10px "宋体", SimSun, serif'
+      ctx.textAlign = 'center'
+      ctx.fillStyle = '#f59e0b'
+      for (let i = 0; i < state.path.length - 1; i++) {
+        const from = state.path[i]
+        const to = state.path[i + 1]
+        const dist = Math.abs(to - from)
+        const x1 = margin.left + from * xScale
+        const y1 = margin.top + i * yStep
+        const x2 = margin.left + to * xScale
+        const y2 = margin.top + (i + 1) * yStep
+        const mx = (x1 + x2) / 2
+        const my = (y1 + y2) / 2
+        ctx.fillText('+' + dist, mx + 10, my - 4)
+      }
+
+      return { margin, chartW, chartH, xScale, yStep }
+    }
+
+    function drawCircleStatic(state) {
+      const width = circleCanvas.getBoundingClientRect().width
+      const height = circleCanvas.getBoundingClientRect().height
+      circleCtx.clearRect(0, 0, width, height)
+
+      const cx = width / 2
+      const cy = height / 2 + 10
+      const maxR = Math.min(width, height) / 2 - 45
+      const innerR = 20
+
+      circleCtx.fillStyle = '#e8e8f0'
+      circleCtx.font = 'bold 13px "宋体", SimSun, serif'
+      circleCtx.textAlign = 'left'
+      circleCtx.fillText('圆形盘面调度视图', 16, 24)
+
+      circleCtx.strokeStyle = 'rgba(255,255,255,0.08)'
+      circleCtx.lineWidth = 1
+      for (let i = 0; i <= 5; i++) {
+        const r = innerR + (maxR - innerR) * (i / 5)
+        circleCtx.beginPath()
+        circleCtx.arc(cx, cy, r, 0, Math.PI * 2)
+        circleCtx.stroke()
+      }
+
+      circleCtx.fillStyle = '#9898b0'
+      circleCtx.font = '10px "宋体", SimSun, serif'
+      circleCtx.textAlign = 'center'
+      for (let i = 0; i <= 5; i++) {
+        const val = Math.round((state.maxCyl / 5) * i)
+        const r = innerR + (maxR - innerR) * (i / 5)
+        const tx = cx + r * Math.cos(-Math.PI / 2)
+        const ty = cy + r * Math.sin(-Math.PI / 2)
+        circleCtx.fillText(String(val), tx, ty - 6)
+      }
+      circleCtx.fillText('磁道号', cx, cy - maxR - 12)
+
+      const angleForStep = (step, total) => -Math.PI / 2 + (step / (total || 1)) * (Math.PI * 2)
+
+      circleCtx.strokeStyle = 'rgba(245, 158, 11, 0.35)'
+      circleCtx.lineWidth = 2
+      circleCtx.beginPath()
+      state.path.forEach((pos, i) => {
+        const a = angleForStep(i, state.path.length - 1)
+        const r = innerR + (pos / state.maxCyl) * (maxR - innerR)
+        const x = cx + r * Math.cos(a)
+        const y = cy + r * Math.sin(a)
+        if (i === 0) circleCtx.moveTo(x, y); else circleCtx.lineTo(x, y)
+      })
+      circleCtx.stroke()
+
+      state.path.forEach((pos, i) => {
+        const a = angleForStep(i, state.path.length - 1)
+        const r = innerR + (pos / state.maxCyl) * (maxR - innerR)
+        const x = cx + r * Math.cos(a)
+        const y = cy + r * Math.sin(a)
+        circleCtx.fillStyle = i === 0 ? '#7c8dbd' : '#22c55e'
+        circleCtx.beginPath(); circleCtx.arc(x, y, 5, 0, Math.PI * 2); circleCtx.fill()
+        circleCtx.fillStyle = '#e8e8f0'
+        circleCtx.font = '10px "宋体", SimSun, serif'
+        circleCtx.textAlign = 'center'
+        circleCtx.fillText(String(pos), x, y - 10)
+      })
+
+      return { cx, cy, maxR, innerR, angleForStep }
+    }
+
+    function drawCircle(state, progress) {
+      const dims = drawCircleStatic(state)
+      if (!state.animating) return
+      const { cx, cy, maxR, innerR, angleForStep } = dims
+      const totalSteps = state.path.length - 1
+      const currentStepF = progress * totalSteps
+      const stepIndex = Math.floor(currentStepF)
+      const stepProgress = currentStepF - stepIndex
+
+      if (stepIndex >= totalSteps) return
+
+      const from = state.path[stepIndex]
+      const to = state.path[stepIndex + 1]
+      const curPos = from + (to - from) * stepProgress
+      const a = angleForStep(stepIndex + stepProgress, totalSteps)
+      const r = innerR + (curPos / state.maxCyl) * (maxR - innerR)
+      const x = cx + r * Math.cos(a)
+      const y = cy + r * Math.sin(a)
+
+      circleCtx.strokeStyle = 'rgba(124, 141, 189, 0.5)'
+      circleCtx.lineWidth = 2
+      circleCtx.beginPath()
+      circleCtx.moveTo(cx, cy)
+      circleCtx.lineTo(x, y)
+      circleCtx.stroke()
+
+      circleCtx.fillStyle = 'rgba(124, 141, 189, 0.25)'
+      circleCtx.beginPath(); circleCtx.arc(x, y, 14, 0, Math.PI * 2); circleCtx.fill()
+      circleCtx.fillStyle = '#7c8dbd'
+      circleCtx.beginPath(); circleCtx.arc(x, y, 7, 0, Math.PI * 2); circleCtx.fill()
+      circleCtx.strokeStyle = '#fff'
+      circleCtx.lineWidth = 2
+      circleCtx.beginPath(); circleCtx.arc(x, y, 7, 0, Math.PI * 2); circleCtx.stroke()
+    }
+
+    function drawLinear(state) {
+      const dims = drawLinearStatic(state)
+      if (!state.animating) return
+      const { margin, xScale, yStep } = dims
+      const progress = Math.min(1, (Date.now() - state.animStart) / state.duration)
+      const totalSteps = state.path.length - 1
+      const currentStepF = progress * totalSteps
+      const stepIndex = Math.floor(currentStepF)
+      const stepProgress = currentStepF - stepIndex
+
+      if (stepIndex >= totalSteps) {
+        state.animating = false
+        document.getElementById('totalMovement').textContent = state.totalMovement
+        document.getElementById('avgSeek').textContent = (state.totalMovement / (state.requests.length || 1)).toFixed(2)
+        document.getElementById('sequence').textContent = state.path.slice(1).join(' → ')
+        drawLinearStatic(state)
+        drawCircleStatic(state)
+        generateExplanation(state)
+        return
+      }
+
+      const from = state.path[stepIndex]
+      const to = state.path[stepIndex + 1]
+      const curPos = from + (to - from) * stepProgress
+      const x = margin.left + curPos * xScale
+      const y = margin.top + (stepIndex + stepProgress) * yStep
+
+      ctx.fillStyle = 'rgba(124, 141, 189, 0.25)'
+      ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI * 2); ctx.fill()
+      ctx.fillStyle = '#7c8dbd'
+      ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fill()
+      ctx.strokeStyle = '#fff'
+      ctx.lineWidth = 2
+      ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.stroke()
+
+      drawCircle(state, progress)
+
+      animId = requestAnimationFrame(() => drawLinear(state))
+    }
+
+    function generateExplanation(state) {
+      const ex = document.getElementById('explanation')
+      let html = '<h4>' + state.algo + ' 执行过程解析</h4>'
+      html += '<p><b>调度规则：</b>' + orderRules[state.algo] + '</p>'
+      html += '<ol>'
+      for (let i = 0; i < state.path.length - 1; i++) {
+        const from = state.path[i]
+        const to = state.path[i + 1]
+        const dist = Math.abs(to - from)
+        const target = i === 0 ? '从起始位置' : '从磁道 ' + from
+        html += '<li>' + target + ' 移动到磁道 <span class="highlight">' + to + '</span>，跨越距离 ' + dist + '</li>'
+      }
+      html += '</ol>'
+      html += '<p>总移动磁道数 = ' + state.totalMovement + '，平均寻道长度 = ' + (state.totalMovement / (state.requests.length || 1)).toFixed(2) + '</p>'
+      ex.innerHTML = html
+      ex.style.display = 'block'
+    }
+
+    function run(algo) {
+      if (animId) cancelAnimationFrame(animId)
+      const { start, maxCyl, requests, direction } = parseInput()
+      if (!requests.length) { alert('请输入至少一个请求'); return }
+      document.getElementById('desc').textContent = descriptions[algo]
+      document.getElementById('formula').textContent = descriptions[algo]
+      document.getElementById('explanation').style.display = 'none'
+      document.getElementById('explanation').innerHTML = ''
+
+      let path = []
+      let totalMovement = 0
+
+      if (algo === 'FCFS') {
+        path = computeFCFS(start, requests)
+      } else if (algo === 'SSTF') {
+        path = computeSSTF(start, requests)
+      } else if (algo === 'SCAN') {
+        path = computeSCAN(start, requests, maxCyl, direction)
+      } else if (algo === 'CSCAN') {
+        path = computeCSCAN(start, requests, maxCyl, direction)
+      } else if (algo === 'FSCAN') {
+        const res = computeFSCAN(start, requests, maxCyl, direction)
+        path = [...res.path1, ...res.path2.slice(1)]
+      }
+
+      for (let i = 1; i < path.length; i++) {
+        totalMovement += Math.abs(path[i] - path[i - 1])
+      }
+
+      currentState = {
+        algo,
+        start,
+        maxCyl,
+        requests,
+        path,
+        totalMovement,
+        animating: true,
+        animStart: Date.now(),
+        duration: Math.max(2000, path.length * 600)
+      }
+      resize()
+      drawLinear(currentState)
+    }
+
+    function reset() {
+      if (animId) cancelAnimationFrame(animId)
+      currentState = null
+      document.getElementById('totalMovement').textContent = '0'
+      document.getElementById('avgSeek').textContent = '0'
+      document.getElementById('sequence').textContent = '-'
+      document.getElementById('desc').textContent = '点击上方按钮选择算法，观察磁头移动轨迹。左侧为线性轨迹，右侧为圆形盘面视图。'
+      document.getElementById('formula').textContent = '算法说明将显示在这里'
+      document.getElementById('explanation').style.display = 'none'
+      document.getElementById('explanation').innerHTML = ''
+      resize()
+    }
+
+    resize()
+  </script>
+
+<!-- AI 答疑悬浮按钮 -->
+<button class="ai-float-btn" onclick="toggleAiPanel()">
+  <svg width="20" height="20" viewBox="0 0 1024 1024">
+    <path d="M122.281 287v450L317.15 624.5v-225z" fill="#0423DB"/>
+    <path d="M317.15 399.5v225L512 512z" fill="#1C54E4"/>
+    <path d="M512 512L317.15 399.5l389.625-225.131L901.719 287z" fill="#AB9BFF"/>
+    <path d="M317.15 399.5L122.281 287 512 62l194.775 112.369z" fill="#7347FF"/>
+    <path d="M901.719 737L512 962 317.15 849.5l389.7-225z" fill="#00CFCA"/>
+    <path d="M706.85 624.5L901.719 512v225z m-389.7 225L122.281 737 512 512l194.85 112.5z" fill="#00EBD2"/>
+  </svg>
+  <span>AI 答疑</span>
+</button>
+
+<!-- AI 面板 -->
+<div class="ai-panel" id="aiPanel">
+  <div class="ai-panel-header">
+    <span>AI 助手</span>
+    <button class="ai-close" onclick="toggleAiPanel()">×</button>
+  </div>
+  <div class="ai-messages" id="aiMessages">
+    <div class="ai-welcome">
+      <p>你好！我是 AI 刷题助手。</p>
+      <p>当前页面讲解的是 <strong>磁盘调度算法</strong>，包括 FCFS、SSTF、SCAN、CSCAN、FSCAN 五种算法。</p>
+      <p>你可以问我任何相关问题，比如：</p>
+      <ul>
+        <li>什么是 FCFS 算法？</li>
+        <li>SSTF 和 SCAN 算法的区别？</li>
+        <li>哪种算法寻道距离最短？</li>
+      </ul>
+    </div>
+  </div>
+  <div class="ai-input-area">
+    <input type="text" id="aiInput" placeholder="输入问题，按 Enter 发送..." onkeydown="handleAiKeyDown(event)" />
+    <button onclick="sendAiMessage()">发送</button>
+  </div>
+</div>
+
+<style>
+.ai-float-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: linear-gradient(135deg, #0423DB 0%, #1C54E4 50%, #7347FF 100%);
+  border: none;
+  border-radius: 28px;
+  padding: 12px 20px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 4px 20px rgba(4, 33, 219, 0.4);
+  transition: all 0.2s ease;
+  z-index: 1000;
+  font-family: inherit;
+}
+.ai-float-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(4, 33, 219, 0.5);
+}
+.ai-panel {
+  position: fixed;
+  bottom: 80px;
+  right: 24px;
+  width: 360px;
+  height: 480px;
+  background: #1a1a2e;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+}
+.ai-panel.open { display: flex; }
+.ai-panel-header {
+  background: linear-gradient(135deg, #0423DB 0%, #1C54E4 100%);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  font-size: 14px;
+  color: #fff;
+}
+.ai-close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.8;
+}
+.ai-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+.ai-welcome {
+  background: #161628;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #9898b0;
+}
+.ai-welcome p { margin-bottom: 8px; }
+.ai-welcome p:last-child { margin-bottom: 0; }
+.ai-welcome strong { color: #e8e8f0; }
+.ai-welcome ul { margin: 8px 0 0 16px; }
+.ai-welcome li { margin-bottom: 4px; }
+.ai-msg {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.ai-msg.user {
+  background: #1e3a5f;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+.ai-msg.ai {
+  background: #161628;
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+.ai-msg.loading { color: #9898b0; font-style: italic; }
+.ai-input-area {
+  padding: 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  gap: 8px;
+}
+.ai-input-area input {
+  flex: 1;
+  padding: 8px 12px;
+  background: #161628;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  color: #e8e8f0;
+  font-size: 13px;
+  font-family: inherit;
+}
+.ai-input-area input:focus { outline: none; border-color: #3b82f6; }
+.ai-input-area input::placeholder { color: #9898b0; }
+.ai-input-area button {
+  padding: 8px 16px;
+  background: #059669;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.ai-input-area button:hover { filter: brightness(1.1); }
+</style>
+
+<script>
+let aiLoading = false;
+function toggleAiPanel() { document.getElementById('aiPanel').classList.toggle('open'); }
+function addAiMsg(role, content, loading = false) {
+  const c = document.getElementById('aiMessages');
+  const d = document.createElement('div');
+  d.className = 'ai-msg ' + role + (loading ? ' loading' : '');
+  d.textContent = loading ? '正在思考...' : content;
+  c.appendChild(d);
+  c.scrollTop = c.scrollHeight;
+}
+async function sendAiMessage() {
+  const input = document.getElementById('aiInput');
+  const text = input.value.trim();
+  if (!text || aiLoading) return;
+  addAiMsg('user', text);
+  input.value = '';
+  aiLoading = true;
+  addAiMsg('ai', '', true);
+  try {
+    const ctx = '【当前页面】磁盘调度算法动画演示\n\n包含FCFS、SSTF、SCAN、CSCAN、FSCAN五种算法的可视化演示。\n\n用户问题：' + text;
+    const ans = await callAI(ctx);
+    document.querySelectorAll('.ai-msg.ai.loading').forEach(m => m.remove());
+    addAiMsg('ai', ans);
+  } catch (e) {
+    document.querySelectorAll('.ai-msg.ai.loading').forEach(m => m.remove());
+    addAiMsg('ai', '抱歉：' + e.message);
+  }
+  aiLoading = false;
+}
+async function callAI(prompt) {
+  const r = await fetch('/api/ai/config');
+  const c = r.ok ? await r.json() : {};
+  if (!c.apiKey) throw new Error('AI API 未配置');
+  const res = await fetch('/api/ai/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages: [{ role: 'user', content: prompt }], model: c.model || 'gpt-3.5-turbo' })
+  });
+  if (!res.ok) throw new Error('API 请求失败');
+  return (await res.json()).choices[0].message.content;
+}
+function handleAiKeyDown(e) { if (e.key === 'Enter') { e.preventDefault(); sendAiMessage(); } }
+</script>
+</body>
+</html>

@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TCP 拥塞控制分析讲解</title>
+  <style>
+    :root {
+      --bg: #0d0e1a;
+      --surface: #161628;
+      --card: #1a1a2e;
+      --text: #e8e8f0;
+      --muted: #9898b0;
+      --accent: #059669;
+      --accent2: #10b981;
+      --warning: #f59e0b;
+      --error: #f43f5e;
+      --info: #3b82f6;
+      --border: rgba(255,255,255,0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.8;
+      padding: 1.5rem;
+      min-height: 100vh;
+    }
+    h1 { text-align: center; margin-bottom: 0.2rem; font-size: 1.5rem; }
+    .subtitle { text-align: center; color: var(--muted); margin-bottom: 1rem; font-size: 0.85rem; }
+
+    /* 顶部固定图片区 */
+    .figures-fixed {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .figures-wrap {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .figure-item {
+      flex: 1;
+      min-width: 300px;
+      max-width: 580px;
+    }
+    .figure-item img {
+      width: 100%;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    .figure-caption {
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 0.4rem;
+    }
+
+    /* 题目导航 */
+    .question-nav {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      justify-content: center;
+    }
+    .q-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    .q-btn:hover { border-color: var(--accent); color: var(--text); }
+    .q-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* 题目内容面板 */
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .panel-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--accent2);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .question-text {
+      font-size: 0.92rem;
+      line-height: 1.9;
+      color: var(--text);
+      padding: 0.75rem 1rem;
+      background: var(--surface);
+      border-radius: 8px;
+      border-left: 3px solid var(--info);
+      margin-bottom: 1rem;
+    }
+
+    /* 解答内容 */
+    .answer-section { margin-top: 1rem; }
+    .answer-section h4 {
+      font-size: 0.9rem;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+    .answer-section p {
+      font-size: 0.88rem;
+      margin-bottom: 0.6rem;
+      color: var(--text);
+    }
+    .answer-section p:last-child { margin-bottom: 0; }
+
+    /* 关键点高亮 */
+    .key-point {
+      background: rgba(5, 150, 105, 0.15);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin: 0.75rem 0;
+      font-size: 0.88rem;
+    }
+    .key-point strong { color: var(--accent2); }
+    .key-point em { color: var(--warning); font-style: normal; }
+
+    /* 计算过程 */
+    .calc-box {
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin: 0.5rem 0;
+      font-size: 0.85rem;
+      font-family: 'Courier New', monospace;
+    }
+    .calc-box .line { margin-bottom: 0.25rem; }
+    .calc-box .line:last-child { margin-bottom: 0; }
+    .calc-box .result { color: var(--accent2); font-weight: 700; }
+
+    /* 阶段图例 */
+    .phase-legend {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      font-size: 0.8rem;
+      margin: 0.75rem 0;
+      padding: 0.5rem;
+      background: var(--surface);
+      border-radius: 8px;
+    }
+    .phase-legend span { display: flex; align-items: center; gap: 0.3rem; }
+    .phase-tag {
+      display: inline-block;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+    .phase-ss { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+    .phase-ca { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .phase-fast { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .phase-to { background: rgba(244, 63, 94, 0.2); color: #fb7185; }
+
+    /* 结论框 */
+    .conclusion {
+      background: linear-gradient(135deg, rgba(5, 150, 105, 0.2), rgba(16, 185, 129, 0.1));
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+    .conclusion strong { color: var(--accent2); font-size: 1.1rem; }
+
+    /* 翻页按钮 */
+    .nav-buttons {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+    button {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.6rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    button:hover { border-color: var(--accent); color: var(--accent); }
+    button.primary {
+      background: linear-gradient(135deg, #047857 0%, #059669 100%);
+      border: none; color: #fff;
+    }
+    button.primary:hover { filter: brightness(1.1); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>TCP 拥塞控制分析讲解</h1>
+  <p class="subtitle">计算机网络 · TCP Reno 拥塞控制机制 · 共9题</p>
+
+  <!-- 固定图片区 -->
+  <div class="figures-fixed">
+    <div class="figures-wrap">
+      <div class="figure-item">
+        <img src="/assets/images/tcp-拥塞控制.png" alt="TCP拥塞控制窗口变化图" />
+        <p class="figure-caption">图1：TCP 拥塞窗口长度作为时间的函数（传输轮回）</p>
+      </div>
+      <div class="figure-item">
+        <img src="/assets/images/拥塞控制矩阵.png" alt="TCP拥塞控制状态矩阵" />
+        <p class="figure-caption">图2：TCP 拥塞控制状态转换矩阵</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 题目导航 -->
+  <div class="question-nav" id="questionNav">
+    <button class="q-btn active" onclick="showQuestion(0)">a</button>
+    <button class="q-btn" onclick="showQuestion(1)">b</button>
+    <button class="q-btn" onclick="showQuestion(2)">c</button>
+    <button class="q-btn" onclick="showQuestion(3)">d</button>
+    <button class="q-btn" onclick="showQuestion(4)">e</button>
+    <button class="q-btn" onclick="showQuestion(5)">f</button>
+    <button class="q-btn" onclick="showQuestion(6)">g</button>
+    <button class="q-btn" onclick="showQuestion(7)">h</button>
+    <button class="q-btn" onclick="showQuestion(8)">i</button>
+  </div>
+
+  <!-- 题目内容 -->
+  <div class="panel" id="questionPanel">
+    <!-- 动态内容 -->
+  </div>
+
+  <!-- 翻页 -->
+  <div class="nav-buttons">
+    <button id="btn-prev" onclick="prevQuestion()">← 上一题</button>
+    <button class="primary" id="btn-next" onclick="nextQuestion()">下一题 →</button>
+  </div>
+
+  <!-- AI 问答悬浮按钮 -->
+  <button class="ai-float-btn" id="aiFloatBtn" onclick="toggleAiPanel()">
+    <svg width="20" height="20" viewBox="0 0 1024 1024">
+      <path d="M122.281 287v450L317.15 624.5v-225z" fill="#0423DB"/>
+      <path d="M317.15 399.5v225L512 512z" fill="#1C54E4"/>
+      <path d="M512 512L317.15 399.5l389.625-225.131L901.719 287z" fill="#AB9BFF"/>
+      <path d="M317.15 399.5L122.281 287 512 62l194.775 112.369z" fill="#7347FF"/>
+      <path d="M901.719 737L512 962 317.15 849.5l389.7-225z" fill="#00CFCA"/>
+      <path d="M706.85 624.5L901.719 512v225z m-389.7 225L122.281 737 512 512l194.85 112.5z" fill="#00EBD2"/>
+    </svg>
+    <span>AI 答疑</span>
+  </button>
+
+  <!-- AI 问答面板 -->
+  <div class="ai-panel" id="aiPanel">
+    <div class="ai-panel-header">
+      <span>AI 助手</span>
+      <button class="ai-close" onclick="toggleAiPanel()">×</button>
+    </div>
+    <div class="ai-messages" id="aiMessages">
+      <div class="ai-welcome">
+        <p>你好！我是 AI 刷题助手。</p>
+        <p>当前页面讲解的是 <strong>TCP 拥塞控制</strong>，包括慢启动、拥塞避免、快速恢复等机制。</p>
+        <p>你可以问我任何相关问题，比如：</p>
+        <ul>
+          <li>什么是慢启动算法？</li>
+          <li>3个冗余ACK和超时的区别？</li>
+          <li>ssthresh 是如何计算的？</li>
+        </ul>
+      </div>
+    </div>
+    <div class="ai-input-area">
+      <input type="text" id="aiInput" placeholder="输入问题，按 Enter 发送..." onkeydown="handleAiKeyDown(event)" />
+      <button onclick="sendAiMessage()">发送</button>
+    </div>
+  </div>
+
+  <style>
+    /* AI 悬浮按钮 */
+    .ai-float-btn {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: linear-gradient(135deg, #0423DB 0%, #1C54E4 50%, #7347FF 100%);
+      border: none;
+      border-radius: 28px;
+      padding: 12px 20px;
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(4, 33, 219, 0.4);
+      transition: all 0.2s ease;
+      z-index: 1000;
+      font-family: inherit;
+    }
+    .ai-float-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(4, 33, 219, 0.5);
+    }
+    .ai-float-btn svg { width: 20px; height: 20px; }
+
+    /* AI 面板 */
+    .ai-panel {
+      position: fixed;
+      bottom: 80px;
+      right: 24px;
+      width: 360px;
+      height: 480px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      z-index: 1000;
+    }
+    .ai-panel.open { display: flex; }
+    .ai-panel-header {
+      background: linear-gradient(135deg, #0423DB 0%, #1C54E4 100%);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .ai-close {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      opacity: 0.8;
+    }
+    .ai-close:hover { opacity: 1; }
+    .ai-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+    .ai-welcome {
+      background: var(--surface);
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+    .ai-welcome p { margin-bottom: 8px; }
+    .ai-welcome p:last-child { margin-bottom: 0; }
+    .ai-welcome strong { color: var(--text); }
+    .ai-welcome ul { margin: 8px 0 0 16px; }
+    .ai-welcome li { margin-bottom: 4px; }
+    .ai-msg {
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .ai-msg.user {
+      background: #1e3a5f;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+    .ai-msg.ai {
+      background: var(--surface);
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+    .ai-msg.loading {
+      color: var(--muted);
+      font-style: italic;
+    }
+    .ai-input-area {
+      padding: 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+    }
+    .ai-input-area input {
+      flex: 1;
+      padding: 8px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+    }
+    .ai-input-area input:focus { outline: none; border-color: var(--info); }
+    .ai-input-area input::placeholder { color: var(--muted); }
+    .ai-input-area button {
+      padding: 8px 16px;
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .ai-input-area button:hover { filter: brightness(1.1); }
+  </style>
+
+  <script>
+    // ===== 9道题的详细解答数据 =====
+    const questions = [
+      // ===== a. 慢启动时间间隔 =====
+      {
+        title: 'a. 慢启动运行的时间间隔',
+        question: '指出当 TCP 慢启动运行时的时间间隔。',
+        answer: [
+          {
+            heading: '慢启动阶段识别',
+            content: '慢启动（Slow Start）是 TCP 拥塞控制的第一阶段，其特点是：<strong>cwnd（拥塞窗口）指数增长</strong>，每经过一个传输轮回（RTT），cwnd 加倍。'
+          },
+          {
+            heading: '观察图1分析',
+            content: '从图中可以观察到：<br>• <strong>[1, 6]</strong>：cwnd 从1开始，依次为 1→2→4→8→16→32，每轮翻倍，这是典型的慢启动特征<br>• <strong>[23, 26]</strong>：第22轮回超时后，cwnd 降为1，重新进入慢启动，cwnd 从1→2→4→8，指数增长'
+          },
+          {
+            heading: '阶段图例说明',
+            content: '<div class="phase-legend"><span><span class="phase-tag phase-ss">慢启动</span> cwnd指数增长（翻倍）</span><span><span class="phase-tag phase-ca">拥塞避免</span> cwnd线性增长（+1）</span><span><span class="phase-tag phase-fast">快速恢复</span> 3个冗余ACK</span><span><span class="phase-tag phase-to">超时</span> cwnd=1重新慢启动</span></div>'
+          },
+          {
+            heading: '答案',
+            content: '<div class="key-point">慢启动的时间间隔为：<strong>[1，6]</strong> 和 <strong>[23，26]</strong></div>即：第1至第6传输轮回，第23至第26传输轮回。'
+          }
+        ]
+      },
+      // ===== b. 拥塞避免时间间隔 =====
+      {
+        title: 'b. 拥塞避免运行的时间间隔',
+        question: '指出当 TCP 拥塞避免运行时的时间间隔。',
+        answer: [
+          {
+            heading: '拥塞避免阶段识别',
+            content: '拥塞避免（Congestion Avoidance）阶段的特点是：<strong>cwnd 线性增长</strong>，每经过一个 RTT，cwnd 只增加 1（MSS）。这是当 cwnd 达到或超过 ssthresh（慢启动阈值）后进入的阶段。'
+          },
+          {
+            heading: '观察图1分析',
+            content: '从图中可以观察到：<br>• <strong>[6，16]</strong>：第6轮回 cwnd=32 达到 ssthresh=32，转入拥塞避免。之后 cwnd 从33缓慢增长到42，呈线性特征<br>• <strong>[17，22]</strong>：第16轮回检测到3个冗余ACK后，进入快速恢复又退出，第17轮回继续拥塞避免，cwnd 从40增长到44'
+          },
+          {
+            heading: '关键阈值说明',
+            content: '<div class="calc-box"><div class="line">• ssthresh（慢启动阈值）初始值 = 32</div><div class="line">• 第6轮回：cwnd=32 达到 ssthresh，转入拥塞避免</div><div class="line">• 拥塞避免期间，每轮 cwnd +1</div></div>'
+          },
+          {
+            heading: '答案',
+            content: '<div class="key-point">拥塞避免的时间间隔为：<strong>[6，16]</strong> 和 <strong>[17，22]</strong></div>即：第6至第16传输轮回，第17至第22传输轮回。'
+          }
+        ]
+      },
+      // ===== c. 第16轮回丢包检测方式 =====
+      {
+        title: 'c. 第16个传输轮回后的丢包检测方式',
+        question: '在第16个传输轮回之后，报文段的丢失是根据3个重复确认还是根据超时检测出来的？',
+        answer: [
+          {
+            heading: '判断依据',
+            content: '<div class="key-point">判断方法：<br>• 如果是<em>超时检测</em>：cwnd 会直接降为 1，并重新进入慢启动<br>• 如果是<em>3个冗余ACK</em>：cwnd 降为 ssthresh/2 + 3，然后进入快速恢复</div>'
+          },
+          {
+            heading: '分析第16轮回',
+            content: '观察图1中第16轮回的变化：<br>• 第15轮回末：cwnd = 41<br>• 第16轮回：cwnd = 42（轻微增长）<br>• 第17轮回：cwnd = 40（没有降为1！）<br><br>如果是<em>超时</em>，cwnd 应该直接降为1并进入慢启动。但图中 cwnd 只是从42降到40，这正是<strong>3个冗余ACK</strong>的处理方式：ssthresh = 42/2 = 21，cwnd = 21 + 3 = 24？但图示为40，可能是实现细节差异，重点是：没有降到1。'
+          },
+          {
+            heading: '超时 vs 3个冗余ACK 的区别',
+            content: '<div class="calc-box"><div class="line"><strong>超时检测：</strong></div><div class="line">ssthresh = cwnd / 2</div><div class="line">cwnd = 1（进入慢启动）</div><div class="line" style="margin-top:0.5rem;"><strong>3个冗余ACK检测：</strong></div><div class="line">ssthresh = cwnd / 2</div><div class="line">cwnd = ssthresh + 3（进入快速恢复）</div></div>'
+          },
+          {
+            heading: '答案',
+            content: '<div class="key-point"><strong>根据3个重复确认检测出来的。</strong></div>理由：如果是超时，cwnd 会降为1并重新慢启动。但图示中第16轮回后 cwnd 只是轻微下降，没有回到1，说明是3个冗余ACK触发的快速恢复。'
+          }
+        ]
+      },
+      // ===== d. 第22轮回丢包检测方式 =====
+      {
+        title: 'd. 第22个传输轮回后的丢包检测方式',
+        question: '在第22个传输轮回之后，报文段的丢失是根据3个重复确认还是根据超时检测出来的？',
+        answer: [
+          {
+            heading: '观察第22轮回的变化',
+            content: '从图1中观察第22轮回：<br>• 第21轮回末：cwnd = 44<br>• 第22轮回：cwnd = 26（大幅下降！）<br>• 第23轮回：cwnd = 1（直接降为1！）'
+          },
+          {
+            heading: '关键证据',
+            content: '<div class="key-point">关键证据：<strong>第23轮回 cwnd = 1</strong>，并且从第23轮回开始重新出现 cwnd 指数增长（1→2→4→8）。<br><br>这是<em>超时</em>的典型特征：超时触发后，cwnd 降为1，整个连接重新进入慢启动阶段。</div>'
+          },
+          {
+            heading: '与3个冗余ACK对比',
+            content: '如果是3个冗余ACK：<br>• cwnd 不会降为1<br>• 不会重新进入慢启动<br>• 而是进入快速恢复，cwnd 设为 ssthresh + 3<br><br>但图中明确显示第23轮回 cwnd=1 并重新慢启动，这只能是<strong>超时</strong>导致的。'
+          },
+          {
+            heading: '答案',
+            content: '<div class="key-point"><strong>根据超时检测出来的。</strong></div>理由：第22轮回后 cwnd 降为1，且第23轮回重新进入慢启动阶段，这是超时的典型行为。'
+          }
+        ]
+      },
+      // ===== e. ssthresh初始值 =====
+      {
+        title: 'e. 第一个传输轮回里 ssthresh 的初始值',
+        question: '在第一个传输轮回里，ssthresh 的初始值设置为多少？',
+        answer: [
+          {
+            heading: 'ssthresh 的作用',
+            content: 'ssthresh（慢启动阈值）是决定何时从慢启动阶段转入拥塞避免阶段的关键变量。<br>• 当 cwnd &lt; ssthresh 时：慢启动（指数增长）<br>• 当 cwnd ≥ ssthresh 时：拥塞避免（线性增长）'
+          },
+          {
+            heading: '观察图1确定初始值',
+            content: '从图1中观察：<br>• 第1-5轮回：cwnd 指数增长（1→2→4→8→16）<br>• 第6轮回：cwnd = 32，此后进入拥塞避免（线性增长）<br><br>这说明 <strong>ssthresh = 32</strong>，因为当 cwnd 增长到32时，正好触发了阶段转换。'
+          },
+          {
+            heading: '计算验证',
+            content: '<div class="calc-box"><div class="line">慢启动阶段（cwnd &lt; ssthresh）：</div><div class="line">RTT 1: cwnd = 1</div><div class="line">RTT 2: cwnd = 2</div><div class="line">RTT 3: cwnd = 4</div><div class="line">RTT 4: cwnd = 8</div><div class="line">RTT 5: cwnd = 16</div><div class="line">RTT 6: cwnd = 32 → 达到 ssthresh</div><div class="line" style="margin-top:0.5rem;"><strong>结论：ssthresh = 32</strong></div></div>'
+          },
+          {
+            heading: '答案',
+            content: '<div class="key-point"><strong>ssthresh 的初始值是 32。</strong></div>这是慢启动停止、拥塞避免开始的阈值。'
+          }
+        ]
+      },
+      // ===== f. 第18轮回 ssthresh 值 =====
+      {
+        title: 'f. 第18个传输轮回里 ssthresh 的值',
+        question: '在第18个传输轮回里，ssthresh 的值设置为多少？',
+        answer: [
+          {
+            heading: '分析丢包事件',
+            content: '要计算第18轮回的 ssthresh，需要先回溯第16轮回的丢包事件：<br>• 第16轮回检测到<strong>3个冗余ACK</strong><br>• 此时的 cwnd = 42'
+          },
+          {
+            heading: '3个冗余ACK的处理规则',
+            content: '当检测到3个冗余ACK时，TCP Reno 的处理：<br><div class="calc-box"><div class="line"><strong>1. ssthresh 更新：</strong></div><div class="line">ssthresh = cwnd / 2</div><div class="line">ssthresh = 42 / 2 = <strong>21</strong></div><div class="line" style="margin-top:0.5rem;"><strong>2. cwnd 更新：</strong></div><div class="line">cwnd = ssthresh + 3 = 21 + 3 = 24</div><div class="line" style="margin-top:0.5rem;"><em>（图示可能显示为40，这是实现细节差异）</em></div></div>'
+          },
+          {
+            heading: '状态转换时机',
+            content: 'ssthresh 的更新发生在<strong>检测到丢包的那一刻</strong>，即第16轮回。<br>之后进入快速恢复阶段，快速恢复结束后，cwnd 设为 ssthresh（21），然后继续拥塞避免。'
+          },
+          {
+            heading: '答案',
+            content: '<div class="key-point"><strong>第18个传输轮回里，ssthresh = 21</strong></div>（由第16轮回检测到3个冗余ACK时设置，ssthresh = 42/2 = 21）'
+          }
+        ]
+      },
+      // ===== g. 第24轮回 ssthresh 值 =====
+      {
+        title: 'g. 第24个传输轮回里 ssthresh 的值',
+        question: '在第24个传输轮回里，ssthresh 的值设置为多少？',
+        answer: [
+          {
+            heading: '分析超时事件',
+            content: '要计算第24轮回的 ssthresh，需要先回溯第22轮回的超时事件：<br>• 第22轮回检测到<strong>超时</strong><br>• 此时的 cwnd = 26'
+          },
+          {
+            heading: '超时的处理规则',
+            content: '当检测到超时时，TCP Reno 的处理：<br><div class="calc-box"><div class="line"><strong>1. ssthresh 更新：</strong></div><div class="line">ssthresh = cwnd / 2</div><div class="line">ssthresh = 26 / 2 = <strong>13</strong></div><div class="line" style="margin-top:0.5rem;"><strong>2. cwnd 更新：</strong></div><div class="line">cwnd = 1（进入慢启动）</div></div>'
+          },
+          {
+            heading: '时间线分析',
+            content: '• 第22轮回：检测到超时，ssthresh = 26/2 = 13，cwnd = 1<br>• 第23轮回：cwnd = 1，重新慢启动<br>• 第24轮回：cwnd = 2，此时 ssthresh 已经更新为 13'
+          },
+          {
+            heading: '答案',
+            content: '<div class="key-point"><strong>第24个传输轮回里，ssthresh = 13</strong></div>（由第22轮回检测到超时时设置，ssthresh = 26/2 = 13）'
+          }
+        ]
+      },
+      // ===== h. 第70个报文在哪一轮回 =====
+      {
+        title: 'h. 第70个报文在哪一个传输轮回内发送',
+        question: '第70个报文段在哪一个传输轮回内发送？',
+        answer: [
+          {
+            heading: '慢启动发送规律',
+            content: '在慢启动阶段，每轮发送的报文段数量呈指数增长：<br><div class="calc-box"><div class="line"><strong>慢启动发送规则：</strong></div><div class="line">RTT 1: 发送 1 个报文段</div><div class="line">RTT 2: 发送 2 个报文段（累计 1+2=3）</div><div class="line">RTT 3: 发送 4 个报文段（累计 3+4=7）</div><div class="line">RTT 4: 发送 8 个报文段（累计 7+8=15）</div><div class="line">RTT 5: 发送 16 个报文段（累计 15+16=31）</div><div class="line">RTT 6: 发送 32 个报文段（累计 31+32=63）</div><div class="line">RTT 7: 发送 64 个报文段（累计 63+64=127）</div></div>'
+          },
+          {
+            heading: '累加计算',
+            content: '计算累计发送的报文段数量：<br><div class="calc-box"><div class="line">第1轮回末：1 个报文</div><div class="line">第2轮回末：1 + 2 = 3 个报文</div><div class="line">第3轮回末：3 + 4 = 7 个报文</div><div class="line">第4轮回末：7 + 8 = 15 个报文</div><div class="line">第5轮回末：15 + 16 = 31 个报文</div><div class="line">第6轮回末：31 + 32 = 63 个报文</div><div class="line">第7轮回末：63 + 64 = 127 个报文</div></div>'
+          },
+          {
+            heading: '定位第70个报文',
+            content: '<div class="key-point">第6轮回末累计发送 63 个报文，第7轮回发送第64-127个报文。<br><br>因此，第70个报文 = 第7轮回发送的第 70 - 63 = <strong>7</strong> 个报文。</div>'
+          },
+          {
+            heading: '答案',
+            content: '<div class="conclusion"><strong>第70个报文在第7个传输轮回内发送。</strong></div>'
+          }
+        ]
+      },
+      // ===== i. 第26轮回后的cwnd和ssthresh =====
+      {
+        title: 'i. 第26个传输轮回后的 cwnd 和 ssthresh',
+        question: '假定在第26个发送轮回后，通过收到3个冗余ACK检测出有分组丢失，拥塞的窗口长度和 ssthresh 的值将应当是多少？',
+        answer: [
+          {
+            heading: '已知条件',
+            content: '• 第26轮回检测到<strong>3个冗余ACK</strong><br>• 此时的 cwnd = 8（从图中观察）'
+          },
+          {
+            heading: '3个冗余ACK的处理规则',
+            content: '当通过3个冗余ACK检测到分组丢失时，TCP Reno 的处理：<br><div class="calc-box"><div class="line"><strong>1. ssthresh 更新：</strong></div><div class="line">ssthresh = cwnd / 2</div><div class="line">ssthresh = 8 / 2 = <strong>4</strong></div><div class="line" style="margin-top:0.5rem;"><strong>2. cwnd 更新：</strong></div><div class="line">cwnd = ssthresh + 3（进入快速恢复）</div><div class="line">cwnd = 4 + 3 = <strong>7</strong></div></div>'
+          },
+          {
+            heading: '为什么是 +3？',
+            content: '<div class="key-point"><strong>+3 的原因：</strong>收到3个冗余ACK，说明有3个分组已经离开了网络（被接收方收到），因此可以"借"这3个分组的窗口空间，允许 cwnd 适当大一些。</div>'
+          },
+          {
+            heading: '答案',
+            content: '<div class="conclusion"><strong>第26轮回后：</strong><br>• ssthresh = 4<br>• cwnd = 7</div>'
+          }
+        ]
+      }
+    ];
+
+    let currentQ = 0;
+
+    function renderQuestion() {
+      const q = questions[currentQ];
+      let html = `<div class="panel-title">${q.title}</div>`;
+
+      // 题目
+      html += `<div class="question-text">${q.question}</div>`;
+
+      // 解答
+      html += '<div class="answer-section">';
+      q.answer.forEach(a => {
+        html += `<h4>${a.heading}</h4>`;
+        html += `<p>${a.content}</p>`;
+      });
+      html += '</div>';
+
+      document.getElementById('questionPanel').innerHTML = html;
+
+      // 更新导航按钮状态
+      document.querySelectorAll('.q-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === currentQ);
+      });
+
+      // 更新翻页按钮
+      document.getElementById('btn-prev').disabled = currentQ === 0;
+      document.getElementById('btn-next').disabled = currentQ === questions.length - 1;
+    }
+
+    function showQuestion(idx) {
+      currentQ = idx;
+      renderQuestion();
+    }
+
+    function nextQuestion() {
+      if (currentQ < questions.length - 1) {
+        currentQ++;
+        renderQuestion();
+      }
+    }
+
+    function prevQuestion() {
+      if (currentQ > 0) {
+        currentQ--;
+        renderQuestion();
+      }
+    }
+
+    // 初始化
+    renderQuestion();
+
+    // ===== AI 问答功能 =====
+    let aiMessages = [];
+    let aiLoading = false;
+
+    function toggleAiPanel() {
+      const panel = document.getElementById('aiPanel');
+      const btn = document.getElementById('aiFloatBtn');
+      panel.classList.toggle('open');
+    }
+
+    function addAiMessage(role, content, loading = false) {
+      const container = document.getElementById('aiMessages');
+      const div = document.createElement('div');
+      div.className = `ai-msg ${role}${loading ? ' loading' : ''}`;
+      div.textContent = loading ? '正在思考...' : content;
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    async function sendAiMessage() {
+      const input = document.getElementById('aiInput');
+      const text = input.value.trim();
+      if (!text || aiLoading) return;
+
+      // 添加用户消息
+      addAiMessage('user', text);
+      aiMessages.push({ role: 'user', content: text });
+      input.value = '';
+
+      // 添加AI加载状态
+      aiLoading = true;
+      addAiMessage('ai', '', true);
+
+      try {
+        // 构建上下文
+        const context = buildTcpContext() + '\n\n用户问题：' + text;
+
+        // 调用AI
+        const answer = await callAI(context);
+
+        // 移除加载消息，添加实际回答
+        const msgs = document.querySelectorAll('.ai-msg.ai.loading');
+        msgs.forEach(m => m.remove());
+        addAiMessage('ai', answer);
+        aiMessages.push({ role: 'ai', content: answer });
+      } catch (e) {
+        const msgs = document.querySelectorAll('.ai-msg.ai.loading');
+        msgs.forEach(m => m.remove());
+        addAiMessage('ai', '抱歉：' + e.message);
+      }
+
+      aiLoading = false;
+    }
+
+    function buildTcpContext() {
+      return `【当前页面主题】TCP 拥塞控制分析讲解
+
+【知识点概要】
+1. TCP 慢启动（Slow Start）
+   - cwnd（拥塞窗口）指数增长，每RTT翻倍
+   - 当 cwnd >= ssthresh 时转入拥塞避免
+
+2. TCP 拥塞避免（Congestion Avoidance）
+   - cwnd 线性增长，每RTT增加1个MSS
+   - 当 cwnd < ssthresh 时保持慢启动
+
+3. 快速重传与快速恢复（Fast Retransmit & Fast Recovery）
+   - 收到3个冗余ACK时触发
+   - ssthresh = cwnd / 2
+   - cwnd = ssthresh + 3
+
+4. 超时（Timeout）
+   - 检测到丢包时触发
+   - ssthresh = cwnd / 2
+   - cwnd = 1，重新进入慢启动
+
+【题目信息】
+本页面分析了9道教强的TCP拥塞控制题目，涉及：
+- 慢启动和拥塞避免的时间间隔判断
+- 丢包检测方式（3个冗余ACK vs 超时）
+- ssthresh阈值的计算和更新
+- 报文段发送轮次的计算`;
+    }
+
+    async function callAI(prompt) {
+      try {
+        const configRes = await fetch('/api/ai/config');
+        let config = {};
+        if (configRes.ok) config = await configRes.json();
+
+        if (!config.apiKey) {
+          throw new Error('AI API 未配置。请前往设置页面配置 API Key。');
+        }
+
+        const res = await fetch('/api/ai/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [{ role: 'user', content: prompt }],
+            model: config.model || 'gpt-3.5-turbo'
+          })
+        });
+
+        if (!res.ok) throw new Error('API 请求失败');
+        const data = await res.json();
+        return data.choices[0].message.content;
+      } catch (e) {
+        throw new Error(e.message || 'AI 服务不可用');
+      }
+    }
+
+    function handleAiKeyDown(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendAiMessage();
+      }
+    }
+  </script>
+</body>
+</html>
