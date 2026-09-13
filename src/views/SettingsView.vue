@@ -342,8 +342,9 @@ async function resetAll() {
 }
 
 .page-title {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .settings-section {

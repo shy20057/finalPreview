@@ -1,6 +1,9 @@
 /* ===== Design System ===== */
 
 :root {
+  --font-sans: Inter, "Noto Serif SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "ZCOOL XiaoWei", "Noto Serif SC", serif;
+
   /* Dark Theme (Default) — Blue accent, deep blue ambient */
   --bg-primary: #0d0e1a;
   --bg-surface: #161628;
@@ -8,13 +11,13 @@
   --bg-card: #1a1a2e;
   --bg-card-hover: #242440;
   --text-primary: #e8e8f0;
-  --text-secondary: #9898b0;
-  --text-muted: #606078;
-  --accent-primary: #7c8dbd;
-  --accent-secondary: #6b8cce;
-  --accent-gradient: linear-gradient(135deg, #5a6fa0 0%, #6b8cce 100%);
-  --accent-soft: rgba(124, 141, 189, 0.12);
-  --accent-border: rgba(124, 141, 189, 0.30);
+  --text-secondary: #b0b0c8;
+  --text-muted: #7a7a92;
+  --accent-primary: #5b8acc;
+  --accent-secondary: #7aa3e8;
+  --accent-gradient: linear-gradient(135deg, #4a78c0 0%, #7aa3e8 100%);
+  --accent-soft: rgba(91, 138, 204, 0.16);
+  --accent-border: rgba(91, 138, 204, 0.38);
   --success: #22c55e;
   --success-soft: rgba(34, 197, 94, 0.12);
   --success-border: rgba(34, 197, 94, 0.3);
@@ -43,8 +46,8 @@
   --bg-card: #ffffff;
   --bg-card-hover: #f8f9fc;
   --text-primary: #1a1a2e;
-  --text-secondary: #5a5a7a;
-  --text-muted: #9a9ab0;
+  --text-secondary: #45455f;
+  --text-muted: #6b6b85;
   --accent-primary: #d4a0a0;
   --accent-secondary: #e8b0a0;
   --accent-gradient: linear-gradient(135deg, #b87878 0%, #e8b0a0 100%);
@@ -73,13 +76,13 @@
   --bg-card: #1a1a2e;
   --bg-card-hover: #242440;
   --text-primary: #e8e8f0;
-  --text-secondary: #9898b0;
-  --text-muted: #606078;
-  --accent-primary: #7c8dbd;
-  --accent-secondary: #6b8cce;
-  --accent-gradient: linear-gradient(135deg, #5a6fa0 0%, #6b8cce 100%);
-  --accent-soft: rgba(124, 141, 189, 0.12);
-  --accent-border: rgba(124, 141, 189, 0.30);
+  --text-secondary: #b0b0c8;
+  --text-muted: #7a7a92;
+  --accent-primary: #5b8acc;
+  --accent-secondary: #7aa3e8;
+  --accent-gradient: linear-gradient(135deg, #4a78c0 0%, #7aa3e8 100%);
+  --accent-soft: rgba(91, 138, 204, 0.16);
+  --accent-border: rgba(91, 138, 204, 0.38);
   --success: #22c55e;
   --success-soft: rgba(34, 197, 94, 0.12);
   --success-border: rgba(34, 197, 94, 0.3);
@@ -110,7 +113,7 @@ html {
 }
 
 body {
-  font-family: 'SimSun', '宋体', 'STSong', serif;
+  font-family: var(--font-sans);
   background: var(--bg-primary);
   color: var(--text-primary);
   line-height: 1.6;
@@ -196,12 +199,12 @@ body {
 .btn-primary {
   background: var(--accent-gradient);
   color: white;
-  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.2);
+  box-shadow: 0 2px 8px rgba(91, 138, 204, 0.30);
 }
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
+  box-shadow: 0 4px 14px rgba(91, 138, 204, 0.40);
   filter: brightness(1.05);
 }
 
@@ -826,8 +829,8 @@ body {
 /* 颜色池（跟随全局主题） */
 :root {
   /* dark-blue 默认值 */
-  --note-primary: #7c8dbd;
-  --note-secondary: #6b8cce;
+  --note-primary: #5b8acc;
+  --note-secondary: #7aa3e8;
   --note-red: #ef4444;
   --note-blue: #3b82f6;
   --note-green: #22c55e;
@@ -836,8 +839,8 @@ body {
 }
 
 [data-theme="dark-blue"] {
-  --note-primary: #7c8dbd;
-  --note-secondary: #6b8cce;
+  --note-primary: #5b8acc;
+  --note-secondary: #7aa3e8;
 }
 
 [data-theme="light"] {
@@ -854,7 +857,7 @@ mark.note-hl {
 }
 
 [data-theme="dark-blue"] mark.note-hl {
-  background: rgba(124, 141, 189, 0.25);
+  background: rgba(91, 138, 204, 0.28);
 }
 
 [data-theme="light"] mark.note-hl {

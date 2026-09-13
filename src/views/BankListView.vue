@@ -345,8 +345,9 @@ onMounted(async () => {
 }
 
 .page-header h1 {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 /* Subject tabs */
@@ -559,7 +560,7 @@ onMounted(async () => {
   }
 
   .page-header h1 {
-    font-size: 1.1rem;
+    font-size: 1.4rem;
   }
 
   .page-header .btn {

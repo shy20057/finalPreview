@@ -96,6 +96,13 @@ export async function deleteNote(bankId, questionId) {
   return request(`/api/notes/${bankId}/${questionId}`, { method: 'DELETE' })
 }
 
+export async function deleteQuizNotes(ids) {
+  return request('/api/notes/batch-delete', {
+    method: 'POST',
+    body: JSON.stringify({ ids }),
+  })
+}
+
 export async function loadNotesByBank(bankId) {
   return request(`/api/notes?bankId=${bankId}`)
 }

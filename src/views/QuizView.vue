@@ -421,19 +421,18 @@
         </div>
       </div>
     </div>
+    <!-- 退出确认弹窗 -->
+    <ConfirmModal
+      v-if="showExitConfirm"
+      title="退出答题"
+      message="确定要退出答题吗？进度已自动保存，可下次继续。"
+      confirm-text="退出"
+      cancel-text="继续答题"
+      type="info"
+      @confirm="confirmExit"
+      @cancel="showExitConfirm = false"
+    />
   </div>
-
-  <!-- 退出确认弹窗 -->
-  <ConfirmModal
-    v-if="showExitConfirm"
-    title="退出答题"
-    message="确定要退出答题吗？进度已自动保存，可下次继续。"
-    confirm-text="退出"
-    cancel-text="继续答题"
-    type="info"
-    @confirm="confirmExit"
-    @cancel="showExitConfirm = false"
-  />
 </template>
 
 <script setup>
@@ -725,8 +724,9 @@ onMounted(async () => {
 }
 
 .quiz-title h1 {
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .quiz-actions {
@@ -736,8 +736,8 @@ onMounted(async () => {
 
 .quiz-layout {
   display: grid;
-  grid-template-columns: 200px 1fr;
-  gap: 0;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 1rem;
   align-items: start;
   height: calc(100vh - 140px);
   overflow: hidden;
@@ -1296,7 +1296,7 @@ onMounted(async () => {
   }
 
   .quiz-title h1 {
-    font-size: 1rem;
+    font-size: 1.2rem;
     width: 100%;
   }
 

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="app" :data-theme="appStore.theme">
     <!-- 顶栏 -->
     <header class="app-header">
@@ -35,7 +35,7 @@
               <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
             </svg>
           </button>
-          <BubbleMenu class="hide-mobile" />
+          <CommandPalette />
           <button class="hamburger hide-desktop" @click="mobileDrawerRef.open()" aria-label="菜单">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="3" y1="6" x2="21" y2="6"/>
@@ -49,6 +49,9 @@
 
     <!-- 移动端抽屉 -->
     <MobileDrawer ref="mobileDrawerRef" />
+
+    <!-- 浮岛辐射菜单（次级入口常驻） -->
+    <FloatingIslandMenu />
 
     <!-- 主内容区 -->
     <main class="app-main">
@@ -66,7 +69,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { useAppStore } from './stores/app.js'
 import DynamicBadge from './components/DynamicBadge.vue'
-import BubbleMenu from './components/BubbleMenu.vue'
+import CommandPalette from './components/CommandPalette.vue'
+import FloatingIslandMenu from './components/FloatingIslandMenu.vue'
 import MobileDrawer from './components/MobileDrawer.vue'
 
 const mobileDrawerRef = ref(null)
@@ -112,7 +116,7 @@ onMounted(() => {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 1.5rem;
-  height: 56px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -128,8 +132,10 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 1rem;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
   font-weight: 600;
+  letter-spacing: 0.02em;
   color: var(--accent-primary);
   text-decoration: none;
 }
@@ -143,7 +149,7 @@ onMounted(() => {
 .nav-link {
   padding: 0.4rem 0.75rem;
   border-radius: var(--radius-md);
-  font-size: 0.875rem;
+  font-size: 0.95rem;
   font-weight: 500;
   color: var(--text-secondary);
   text-decoration: none;

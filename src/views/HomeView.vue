@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="home-view">
     <!-- Asymmetric Hero -->
     <section class="hero">
@@ -364,10 +364,11 @@ async function resumeSession(session) {
 }
 
 .hero-title {
+  font-family: var(--font-display);
   font-size: clamp(2rem, 4vw, 2.75rem);
   font-weight: 700;
   line-height: 1.15;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.01em;
 }
 
 .hero-desc {
@@ -437,7 +438,7 @@ async function resumeSession(session) {
   border-radius: var(--radius-xl);
   top: 55px;
   left: 90px;
-  box-shadow: 0 8px 24px rgba(74, 222, 128, 0.12);
+  box-shadow: 0 8px 24px rgba(91, 138, 204, 0.25);
 }
 
 .hero-card-content {
@@ -532,9 +533,10 @@ async function resumeSession(session) {
 }
 
 .section-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-secondary);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.005em;
 }
 
 /* ===== Bank Grid ===== */
@@ -704,9 +706,9 @@ async function resumeSession(session) {
   background: linear-gradient(
     to bottom,
     transparent 0%,
-    rgba(5, 150, 105, 0.06) 40%,
-    rgba(5, 150, 105, 0.1) 50%,
-    rgba(5, 150, 105, 0.06) 60%,
+    rgba(91, 138, 204, 0.07) 40%,
+    rgba(91, 138, 204, 0.14) 50%,
+    rgba(91, 138, 204, 0.07) 60%,
     transparent 100%
   );
   animation: filmScan 3s cubic-bezier(0.45, 0, 0.55, 1) infinite;

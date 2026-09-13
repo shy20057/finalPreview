@@ -2,8 +2,33 @@
   <div class="quiz-notes-view">
     <div class="page-header">
       <h1>练习笔记</h1>
-      <span class="text-muted">共 {{ filteredNotes.length }} 条笔记</span>
+      <div class="header-actions">
+        <span class="text-muted">共 {{ filteredNotes.length }} 条笔记</span>
+        <button
+          v-if="notes.length > 0 && !selectionMode"
+          class="btn btn-ghost btn-sm"
+          @click="enterSelectionMode"
+        >批量管理</button>
+      </div>
     </div>
+
+    <Transition name="batch-bar">
+      <div v-if="selectionMode" class="batch-bar">
+        <span>已选 <strong>{{ selectedCount }}</strong> 条</span>
+        <div class="batch-actions">
+          <button class="btn btn-ghost btn-sm" :disabled="filteredNotes.length === 0" @click="toggleSelectAllVisible">
+            {{ allVisibleSelected ? '取消全选' : '全选当前' }}
+          </button>
+          <button class="btn btn-ghost btn-sm" :disabled="selectedCount === 0" @click="clearSelection">取消选择</button>
+          <button class="btn btn-danger-outline btn-sm" :disabled="selectedCount === 0 || deleting" @click="requestBatchDelete">
+            {{ deleting ? '删除中...' : '删除选中' }}
+          </button>
+          <button class="btn btn-secondary btn-sm" :disabled="deleting" @click="exitSelectionMode">退出批量管理</button>
+        </div>
+      </div>
+    </Transition>
+
+    <div v-if="batchError" class="batch-error">{{ batchError }}</div>
 
     <!-- 搜索和筛选 -->
     <div class="filter-bar">
@@ -79,6 +104,17 @@
           >
             <div class="note-card-header">
               <div class="note-meta">
+                <button
+                  v-if="selectionMode"
+                  class="note-checkbox"
+                  :class="{ selected: selectedIds.has(note.id) }"
+                  :aria-label="selectedIds.has(note.id) ? '取消选择该笔记' : '选择该笔记'"
+                  @click="toggleNote(note.id)"
+                >
+                  <svg v-if="selectedIds.has(note.id)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </button>
                 <span class="badge" :class="typeBadgeClass(note.question)">
                   {{ typeLabel(note.question) }}
                 </span>
@@ -120,17 +156,35 @@
         </div>
       </div>
     </div>
+
+    <ConfirmModal
+      v-if="showBatchConfirm"
+      title="删除选中笔记"
+      :message="`确定删除选中的 ${selectedCount} 条练习笔记吗？此操作不可恢复。`"
+      confirm-text="删除"
+      cancel-text="取消"
+      type="danger"
+      @confirm="confirmBatchDelete"
+      @cancel="showBatchConfirm = false"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, reactive } from 'vue'
-import { loadQuizNotes, deleteNote } from '../utils/api.js'
+import { loadQuizNotes, deleteNote, deleteQuizNotes } from '../utils/api.js'
+import { toggleVisibleSelection } from '../utils/noteSelection.js'
+import ConfirmModal from '../components/ConfirmModal.vue'
 
 const notes = ref([])
 const searchText = ref('')
 const filterBank = ref('')
 const expandedGroups = reactive({})
+const selectionMode = ref(false)
+const selectedIds = ref(new Set())
+const showBatchConfirm = ref(false)
+const deleting = ref(false)
+const batchError = ref('')
 
 onMounted(async () => {
   try {
@@ -175,6 +229,64 @@ const groupedNotes = computed(() => {
   }
   return groups
 })
+
+const selectedCount = computed(() => selectedIds.value.size)
+const allVisibleSelected = computed(() => {
+  return filteredNotes.value.length > 0 && filteredNotes.value.every(note => selectedIds.value.has(note.id))
+})
+
+function enterSelectionMode() {
+  selectionMode.value = true
+  batchError.value = ''
+}
+
+function exitSelectionMode() {
+  selectionMode.value = false
+  selectedIds.value = new Set()
+  showBatchConfirm.value = false
+  batchError.value = ''
+}
+
+function toggleNote(id) {
+  const next = new Set(selectedIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selectedIds.value = next
+}
+
+function toggleSelectAllVisible() {
+  selectedIds.value = toggleVisibleSelection(
+    selectedIds.value,
+    filteredNotes.value.map(note => note.id),
+  )
+}
+
+function clearSelection() {
+  selectedIds.value = new Set()
+}
+
+function requestBatchDelete() {
+  if (selectedCount.value === 0) return
+  showBatchConfirm.value = true
+}
+
+async function confirmBatchDelete() {
+  if (selectedCount.value === 0 || deleting.value) return
+  deleting.value = true
+  batchError.value = ''
+  const ids = [...selectedIds.value]
+  try {
+    await deleteQuizNotes(ids)
+    const deletedIds = new Set(ids)
+    notes.value = notes.value.filter(note => !deletedIds.has(note.id))
+    exitSelectionMode()
+  } catch (e) {
+    showBatchConfirm.value = false
+    batchError.value = '删除失败：' + e.message
+  } finally {
+    deleting.value = false
+  }
+}
 
 function toggleGroup(bankName) {
   expandedGroups[bankName] = !expandedGroups[bankName]
@@ -234,8 +346,46 @@ async function handleDelete(note) {
 }
 
 .page-header h1 {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.header-actions,
+.batch-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.batch-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.batch-error {
+  padding: 0.75rem 1rem;
+  color: var(--error);
+  background: var(--error-soft);
+  border: 1px solid var(--error-border);
+  border-radius: var(--radius-md);
+}
+
+.batch-bar-enter-active,
+.batch-bar-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.batch-bar-enter-from,
+.batch-bar-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 /* Filter bar */
@@ -390,6 +540,30 @@ async function handleDelete(note) {
   gap: 0.5rem;
 }
 
+.note-checkbox {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: white;
+  background: transparent;
+  border: 2px solid var(--border-color);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.note-checkbox:hover {
+  border-color: var(--accent-primary);
+}
+
+.note-checkbox.selected {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
 .note-actions {
   display: flex;
   align-items: center;
@@ -493,6 +667,18 @@ async function handleDelete(note) {
 
 /* Mobile */
 @media (max-width: 768px) {
+  .page-header,
+  .batch-bar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .header-actions,
+  .batch-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
   .filter-bar {
     flex-direction: column;
   }

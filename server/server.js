@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite'
 import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
+import { deleteQuizNotesByIds } from './quizNotes.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 3000
@@ -368,6 +369,20 @@ app.post('/api/import', (req, res) => {
 })
 
 // ===== QUESTION NOTES (per bankId + questionId) =====
+
+// POST /api/notes/batch-delete
+app.post('/api/notes/batch-delete', (req, res) => {
+  try {
+    const deletedCount = deleteQuizNotesByIds(db, req.body?.ids)
+    res.json({ success: true, deletedCount })
+  } catch (error) {
+    if (error instanceof TypeError) {
+      return res.status(400).json({ error: error.message })
+    }
+    console.error('批量删除练习笔记失败:', error)
+    res.status(500).json({ error: '批量删除练习笔记失败' })
+  }
+})
 
 // GET /api/notes?bankId=xxx
 app.get('/api/notes', (req, res) => {
