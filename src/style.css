@@ -6,10 +6,11 @@
 
   /* Dark Theme (Default) — Blue accent, deep blue ambient */
   --bg-primary: #0d0e1a;
-  --bg-surface: #161628;
-  --bg-surface-raised: #1e1e38;
-  --bg-card: #1a1a2e;
-  --bg-card-hover: #242440;
+  --bg-surface: rgba(30, 30, 56, 0.72);
+  --bg-surface-raised: rgba(38, 38, 72, 0.82);
+  --bg-card: rgba(26, 26, 46, 0.72);
+  --bg-card-hover: rgba(36, 36, 64, 0.82);
+  --bg-glass-blur: 14px;
   --text-primary: #e8e8f0;
   --text-secondary: #b0b0c8;
   --text-muted: #7a7a92;
@@ -41,10 +42,11 @@
 
 [data-theme="light"] {
   --bg-primary: #f8f9fc;
-  --bg-surface: #ffffff;
-  --bg-surface-raised: #f1f3f8;
-  --bg-card: #ffffff;
-  --bg-card-hover: #f8f9fc;
+  --bg-surface: rgba(255, 255, 255, 0.72);
+  --bg-surface-raised: rgba(255, 255, 255, 0.85);
+  --bg-card: rgba(255, 255, 255, 0.72);
+  --bg-card-hover: rgba(255, 255, 255, 0.85);
+  --bg-glass-blur: 12px;
   --text-primary: #1a1a2e;
   --text-secondary: #45455f;
   --text-muted: #6b6b85;
@@ -71,10 +73,11 @@
 
 [data-theme="dark-blue"] {
   --bg-primary: #0d0e1a;
-  --bg-surface: #161628;
-  --bg-surface-raised: #1e1e38;
-  --bg-card: #1a1a2e;
-  --bg-card-hover: #242440;
+  --bg-surface: rgba(30, 30, 56, 0.72);
+  --bg-surface-raised: rgba(38, 38, 72, 0.82);
+  --bg-card: rgba(26, 26, 46, 0.72);
+  --bg-card-hover: rgba(36, 36, 64, 0.82);
+  --bg-glass-blur: 14px;
   --text-primary: #e8e8f0;
   --text-secondary: #b0b0c8;
   --text-muted: #7a7a92;
@@ -161,6 +164,48 @@ body {
     0 4px 12px rgba(0, 0, 0, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 暗色主题下卡片半透明 + 磨砂玻璃质感 + 蓝色晕染 */
+:root .card,
+:root .bg-surface,
+:root .bg-surface-raised,
+[data-theme="dark-blue"] .card,
+[data-theme="dark-blue"] .bg-surface,
+[data-theme="dark-blue"] .bg-surface-raised {
+  background-image:
+    radial-gradient(ellipse 85% 65% at 0% 0%, rgba(91, 138, 204, 0.22), transparent 70%),
+    radial-gradient(ellipse 75% 55% at 100% 100%, rgba(122, 163, 232, 0.18), transparent 70%),
+    radial-gradient(ellipse 60% 80% at 50% 50%, rgba(74, 120, 192, 0.12), transparent 75%);
+  backdrop-filter: blur(var(--bg-glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--bg-glass-blur)) saturate(160%);
+}
+
+:root .card-hover:hover,
+[data-theme="dark-blue"] .card-hover:hover {
+  background-image:
+    radial-gradient(ellipse 95% 75% at 0% 0%, rgba(91, 138, 204, 0.30), transparent 70%),
+    radial-gradient(ellipse 85% 65% at 100% 100%, rgba(122, 163, 232, 0.24), transparent 70%),
+    radial-gradient(ellipse 70% 90% at 50% 50%, rgba(74, 120, 192, 0.16), transparent 75%);
+}
+
+/* 明亮主题下卡片半透明 + 磨砂玻璃质感 + 藕粉晕染（降低浓度） */
+[data-theme="light"] .card,
+[data-theme="light"] .bg-surface,
+[data-theme="light"] .bg-surface-raised {
+  background-image:
+    radial-gradient(ellipse 80% 60% at 0% 0%, rgba(212, 160, 160, 0.14), transparent 70%),
+    radial-gradient(ellipse 70% 50% at 100% 100%, rgba(184, 120, 120, 0.10), transparent 70%),
+    radial-gradient(ellipse 60% 80% at 50% 50%, rgba(232, 176, 160, 0.07), transparent 75%);
+  backdrop-filter: blur(var(--bg-glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--bg-glass-blur)) saturate(160%);
+}
+
+[data-theme="light"] .card-hover:hover {
+  background-image:
+    radial-gradient(ellipse 90% 70% at 0% 0%, rgba(212, 160, 160, 0.20), transparent 70%),
+    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(184, 120, 120, 0.15), transparent 70%),
+    radial-gradient(ellipse 70% 90% at 50% 50%, rgba(232, 176, 160, 0.10), transparent 75%);
 }
 
 .card-hover:hover {

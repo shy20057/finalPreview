@@ -166,6 +166,7 @@ function toggleOption(label) {
 function submitAnswer() {
   if (selectedAnswers.value.length > 0) {
     submitted.value = true
+    quizStore.markSubmitted(props.question.id)
     emit('answer', [...selectedAnswers.value].sort())
   }
 }

@@ -36,7 +36,7 @@
 
             <!-- 结果区 -->
             <div class="cmd-results" ref="resultsRef">
-              <!-- 空查询：最近 + 全部 -->
+              <!-- 空查询：最近 + 全部（统一索引空间） -->
               <template v-if="!query">
                 <div v-if="recent.length" class="cmd-section">
                   <div class="cmd-section-label">最近访问</div>
@@ -60,14 +60,14 @@
                     v-for="item in group.items"
                     :key="item.path"
                     class="cmd-item"
-                    :class="{ active: activeIndex === flatIndex(item) }"
+                    :class="{ active: activeIndex === recent.length + flatIndex(item) }"
                     @click="select(item)"
-                    @mousemove="activeIndex = flatIndex(item)"
+                    @mousemove="activeIndex = recent.length + flatIndex(item)"
                   >
                     <span class="cmd-item-icon" v-html="iconSvg(item.iconPath)"></span>
                     <span class="cmd-item-label">{{ item.label }}</span>
                     <span class="cmd-item-group">{{ item.group }}</span>
-                    <svg class="cmd-item-enter" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9,18 15,12 9,6"/></svg>
+                    <svg class="cmd-item-enter" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9,18 15,12,9,6"/></svg>
                   </button>
                 </div>
               </template>
@@ -116,8 +116,10 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth.js'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const isOpen = ref(false)
 const query = ref('')
 const activeIndex = ref(0)
@@ -126,6 +128,7 @@ const panelRef = ref(null)
 const resultsRef = ref(null)
 const isMac = ref(false)
 const RECENT_KEY = 'cmd-palette-recent'
+const recentStorageKey = () => `${RECENT_KEY}:${authStore.user?.id}`
 const RECENT_MAX = 4
 
 // 全部命令（含原被折叠的三项，不再区别对待）
@@ -145,16 +148,16 @@ const commands = [
 const recent = ref([])
 function loadRecent() {
   try {
-    const arr = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]')
+    const arr = JSON.parse(localStorage.getItem(recentStorageKey()) || '[]')
     recent.value = arr.map(p => commands.find(c => c.path === p)).filter(Boolean).slice(0, RECENT_MAX)
   } catch {
     recent.value = []
   }
 }
 function pushRecent(path) {
-  const arr = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]').filter(p => p !== path)
+  const arr = JSON.parse(localStorage.getItem(recentStorageKey()) || '[]').filter(p => p !== path)
   arr.unshift(path)
-  localStorage.setItem(RECENT_KEY, JSON.stringify(arr.slice(0, RECENT_MAX)))
+  localStorage.setItem(recentStorageKey(), JSON.stringify(arr.slice(0, RECENT_MAX)))
   loadRecent()
 }
 
@@ -173,6 +176,16 @@ const flatAll = computed(() => groupedAll.value.flatMap(g => g.items))
 function flatIndex(item) {
   return flatAll.value.findIndex(c => c.path === item.path)
 }
+
+// 统一的展示列表（用于键盘导航）
+// 空查询 + 有 recent：[...recent, ...flatAll]（项可在两个 section 重复出现）
+// 空查询 + 无 recent：flatAll
+// 有查询：filtered
+const displayList = computed(() => {
+  if (query.value) return filtered.value
+  if (recent.value.length) return [...recent.value, ...flatAll.value]
+  return flatAll.value
+})
 
 // 过滤
 const filtered = computed(() => {
@@ -217,16 +230,15 @@ function toggle() {
   isOpen.value ? close() : open()
 }
 
-// 键盘导航
+// 键盘导航（使用统一 displayList）
 function moveActive(delta) {
-  const list = query.value ? filtered.value : (recent.value.length ? recent.value : flatAll.value)
+  const list = displayList.value
   if (!list.length) return
   activeIndex.value = (activeIndex.value + delta + list.length) % list.length
   scrollActiveIntoView()
 }
 function selectActive() {
-  const list = query.value ? filtered.value : (recent.value.length ? recent.value : flatAll.value)
-  const item = list[activeIndex.value]
+  const item = displayList.value[activeIndex.value]
   if (item) select(item)
 }
 function select(item) {
@@ -268,6 +280,7 @@ onMounted(() => {
   loadRecent()
   document.addEventListener('keydown', onKeydown)
 })
+watch(() => authStore.user?.id, loadRecent)
 onUnmounted(() => {
   document.removeEventListener('keydown', onKeydown)
   document.body.style.overflow = ''

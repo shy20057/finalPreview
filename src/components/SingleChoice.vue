@@ -165,6 +165,7 @@ function selectOption(label) {
 function submitAnswer() {
   if (selectedAnswer.value) {
     submitted.value = true
+    quizStore.markSubmitted(props.question.id)
     emit('answer', selectedAnswer.value)
   }
 }

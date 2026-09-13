@@ -192,6 +192,7 @@ function handleEnter(index) {
 function submitAnswer() {
   if (allFilled.value) {
     submitted.value = true
+    quizStore.markSubmitted(props.question.id)
     emit('answer', [...userAnswers.value])
   }
 }

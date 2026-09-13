@@ -61,6 +61,12 @@ export const useBankStore = defineStore('bank', () => {
   }
 
   async function deleteBank(bankId) {
+    // 内置题库不允许删除
+    const builtin = builtinBanks.value.find(b => String(b.id) === String(bankId))
+    if (builtin) {
+      console.warn('内置题库不允许删除:', builtin.name)
+      return
+    }
     try {
       console.log('deleteBank called with:', bankId, 'current userBanks:', userBanks.value.map(b => b.id))
       await removeBank(bankId)
@@ -75,6 +81,12 @@ export const useBankStore = defineStore('bank', () => {
   }
 
   async function updateBank(bankId, data) {
+    // 内置题库不允许修改
+    const builtin = builtinBanks.value.find(b => String(b.id) === String(bankId))
+    if (builtin) {
+      console.warn('内置题库不允许修改:', builtin.name)
+      return
+    }
     await modifyBank(bankId, data)
     userBanks.value = await fetchUserBanks()
     if (String(currentBank.value?.id) === String(bankId)) {

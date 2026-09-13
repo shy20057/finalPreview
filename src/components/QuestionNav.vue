@@ -24,6 +24,7 @@
             class="nav-cell"
             :class="{
               current: item.idx === quizStore.currentIndex,
+              answered: statusMap[item.q.id] === 'answered',
               correct: statusMap[item.q.id] === 'correct',
               wrong: statusMap[item.q.id] === 'wrong'
             }"
@@ -51,6 +52,7 @@
 
     <div class="nav-legend">
       <div class="legend-item"><span class="legend-dot current"></span>当前</div>
+      <div class="legend-item"><span class="legend-dot answered"></span>已答</div>
       <div class="legend-item"><span class="legend-dot correct"></span>正确</div>
       <div class="legend-item"><span class="legend-dot wrong"></span>错误</div>
       <div class="legend-item"><span class="legend-dot"></span>未答</div>
@@ -86,7 +88,16 @@ const TYPE_ORDER = ['single', 'multi', 'fill', 'essay']
 const statusMap = computed(() => {
   const map = {}
   for (const q of quizStore.questions) {
-    map[q.id] = quizStore.getQuestionStatus(q.id)
+    const raw = quizStore.getQuestionStatus(q.id)
+    if (raw === 'unanswered') {
+      map[q.id] = 'unanswered'
+    } else if (quizStore.isSubmitted(q.id)) {
+      // 已提交：显示真实对错
+      map[q.id] = raw
+    } else {
+      // 已选答案但未提交：只显示已答，不暴露对错
+      map[q.id] = 'answered'
+    }
   }
   return map
 })
@@ -105,7 +116,7 @@ const groups = computed(() => {
     .map(type => {
       const questions = bucket[type]
       const doneCount = questions.filter(
-        ({ q }) => statusMap.value[q.id] === 'correct' || statusMap.value[q.id] === 'wrong'
+        ({ q }) => statusMap.value[q.id] !== 'unanswered'
       ).length
       return { type, label: TYPE_LABELS[type], questions, doneCount }
     })
@@ -225,6 +236,12 @@ onMounted(() => {
   font-weight: 700;
 }
 
+.nav-cell.answered {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--accent-primary);
+}
+
 .nav-cell.correct {
   background: var(--success-soft);
   border-color: var(--success-border);
@@ -263,6 +280,11 @@ onMounted(() => {
 
 .legend-dot.current {
   border-color: var(--accent-primary);
+  background: var(--accent-soft);
+}
+
+.legend-dot.answered {
+  border-color: var(--accent-border);
   background: var(--accent-soft);
 }
 

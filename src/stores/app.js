@@ -12,6 +12,8 @@ const THEME_KEY = 'quiz_theme'
 export const useAppStore = defineStore('app', () => {
   // Two themes: 'dark-blue', 'light'
   const theme = ref('dark-blue')
+  const themeOwnerId = ref(null)
+  const themeStorageKey = () => themeOwnerId.value == null ? null : `${THEME_KEY}:${themeOwnerId.value}`
   // 当前生效的配置（默认厂商的）
   const aiConfig = ref({ baseUrl: '', apiKey: '', model: '', name: '' })
   // 所有厂商配置列表
@@ -27,19 +29,20 @@ export const useAppStore = defineStore('app', () => {
     } else {
       theme.value = 'dark-blue'
     }
-    localStorage.setItem(THEME_KEY, theme.value)
+    if (themeStorageKey()) localStorage.setItem(themeStorageKey(), theme.value)
     document.documentElement.setAttribute('data-theme', theme.value)
   }
 
   function setTheme(t) {
     if (!VALID_THEMES.includes(t)) t = 'dark-blue'
     theme.value = t
-    localStorage.setItem(THEME_KEY, t)
+    if (themeStorageKey()) localStorage.setItem(themeStorageKey(), t)
     document.documentElement.setAttribute('data-theme', t)
   }
 
-  function initTheme() {
-    const stored = localStorage.getItem(THEME_KEY)
+  function initTheme(userId = null) {
+    themeOwnerId.value = userId
+    const stored = themeStorageKey() ? localStorage.getItem(themeStorageKey()) : null
     if (stored && VALID_THEMES.includes(stored)) {
       theme.value = stored
     } else {
@@ -54,23 +57,16 @@ export const useAppStore = defineStore('app', () => {
       const configs = await loadAiConfigs()
       allAiConfigs.value = configs
       const def = configs.find(c => c.isDefault) || configs[0] || null
-      if (def) {
-        aiConfig.value = {
-          baseUrl: def.baseUrl,
-          apiKey: def.apiKey,
-          model: def.model,
-          name: def.name,
-        }
-      }
-    } catch {
-      // 服务端不可用时回退到 localStorage
-      try {
-        const data = localStorage.getItem('quiz_ai_config')
-        if (data) {
-          const parsed = JSON.parse(data)
-          aiConfig.value = { ...parsed, name: '' }
-        }
-      } catch { /* ignore */ }
+      aiConfig.value = def ? {
+        baseUrl: def.baseUrl,
+        apiKey: def.apiKey,
+        model: def.model,
+        name: def.name,
+      } : { baseUrl: '', apiKey: '', model: '', name: '' }
+    } catch (error) {
+      allAiConfigs.value = []
+      aiConfig.value = { baseUrl: '', apiKey: '', model: '', name: '' }
+      throw error
     } finally {
       aiConfigLoaded.value = true
     }
@@ -80,32 +76,22 @@ export const useAppStore = defineStore('app', () => {
   async function updateAiConfig({ name, baseUrl, apiKey, model, isDefault = true }) {
     if (!name) throw new Error('厂商名称不能为空')
 
-    try {
-      const result = await apiSaveAiConfig({ name, baseUrl, apiKey, model, isDefault: isDefault ? 1 : 0 })
-      // 更新本地列表
-      const idx = allAiConfigs.value.findIndex(c => c.name === name)
-      if (idx >= 0) {
-        allAiConfigs.value[idx] = result
-      } else {
-        allAiConfigs.value.push(result)
-      }
-      // 如果设为默认，更新当前生效配置
-      if (isDefault) {
-        // 其他厂商取消默认
-        allAiConfigs.value.forEach(c => {
-          if (c.name !== name) c.isDefault = 0
-        })
-        aiConfig.value = { baseUrl, apiKey, model, name }
-      }
-      return result
-    } catch {
-      // 服务端不可用时回退 localStorage
-      try {
-        localStorage.setItem('quiz_ai_config', JSON.stringify({ baseUrl, apiKey, model, name }))
-      } catch { /* ignore */ }
-      aiConfig.value = { baseUrl, apiKey, model, name }
-      return null
+    const result = await apiSaveAiConfig({ name, baseUrl, apiKey, model, isDefault: isDefault ? 1 : 0 })
+    // 更新本地列表
+    const idx = allAiConfigs.value.findIndex(c => c.name === name)
+    if (idx >= 0) {
+      allAiConfigs.value[idx] = result
+    } else {
+      allAiConfigs.value.push(result)
     }
+    // 如果设为默认，更新当前生效配置
+    if (isDefault) {
+      allAiConfigs.value.forEach(c => {
+        if (c.name !== name) c.isDefault = 0
+      })
+      aiConfig.value = { baseUrl, apiKey, model, name }
+    }
+    return result
   }
 
   // 切换默认厂商
@@ -117,9 +103,7 @@ export const useAppStore = defineStore('app', () => {
 
   // 删除厂商配置
   async function removeAiConfig(name) {
-    try {
-      await apiDeleteAiConfig(name)
-    } catch { /* ignore if server unavailable */ }
+    await apiDeleteAiConfig(name)
     allAiConfigs.value = allAiConfigs.value.filter(c => c.name !== name)
     // 如果删除的是当前默认的，切换到第一个
     if (aiConfig.value.name === name) {

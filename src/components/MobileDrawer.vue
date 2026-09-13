@@ -5,7 +5,10 @@
       <div v-if="isOpen" class="mobile-drawer-overlay" @click="close">
         <div class="mobile-drawer" @click.stop>
           <div class="drawer-header">
-            <span class="drawer-logo">期末复习</span>
+            <span class="drawer-logo">
+              <img class="drawer-logo-mark" src="/icon.svg" alt="" aria-hidden="true" />
+              期末复习
+            </span>
             <button class="drawer-close" @click="close" aria-label="关闭">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"/>
@@ -48,6 +51,7 @@ const navItems = [
   { path: '/history', label: '历史', iconPath: 'M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z' },
   { path: '/wrongbook', label: '错题', iconPath: 'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M15 9l-6 6 M9 9l6 6' },
   { path: '/favorites', label: '收藏', iconPath: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z' },
+  { path: '/profile', label: '个人中心', iconPath: 'M20 21a8 8 0 0 0-16 0 M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10z' },
   { path: '/notes', label: '笔记', iconPath: 'M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8l-5-5z M15 15v6h6' },
   { path: '/quiz-notes', label: '练习笔记', iconPath: 'M12 20h9 M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z' },
   { path: '/resources', label: '资源', iconPath: 'M16.5 9.4l-9-5.19 M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.27 6.96L12 12.01l8.73-5.05 M12 22.08V12' },
@@ -110,9 +114,17 @@ defineExpose({ open })
 }
 
 .drawer-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 1rem;
   font-weight: 600;
   color: var(--accent-primary);
+}
+
+.drawer-logo-mark {
+  width: 24px;
+  height: 24px;
 }
 
 .drawer-close {

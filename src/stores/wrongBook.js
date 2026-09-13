@@ -2,6 +2,7 @@ import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { useHistoryStore } from './history.js'
 import { useBankStore } from './bank.js'
+import { useAuthStore } from './auth.js'
 
 const TYPE_ORDER = ['single', 'multi', 'fill', 'essay']
 const ALL_TYPES = TYPE_ORDER.slice()
@@ -53,6 +54,8 @@ function addDays(date, days) {
 export const useWrongBookStore = defineStore('wrongBook', () => {
   const historyStore = useHistoryStore()
   const bankStore = useBankStore()
+  const authStore = useAuthStore()
+  const storageKey = key => `${key}:${authStore.user?.id}`
 
   // ===== state =====
   const selectedSubjects = ref(['全部'])
@@ -64,12 +67,19 @@ export const useWrongBookStore = defineStore('wrongBook', () => {
   const sortBy = ref('lastWrongAt') // lastWrongAt | wrongCount | firstWrongAt
   const currentDrawerEntry = ref(null)
   // 已被用户手动标记/移除的 entry.key 集合（覆盖聚合默认状态）
-  const masteredOverrides = ref(loadSet(LS_MASTERED))
-  const removedKeys = ref(loadSet(LS_REMOVED))
+  const masteredOverrides = ref(new Set())
+  const removedKeys = ref(new Set())
 
   // ===== batch selection state =====
   const selectionMode = ref(false)
   const selectedKeys = ref(new Set())
+
+  watch(() => authStore.user?.id, id => {
+    masteredOverrides.value = id == null ? new Set() : loadSet(storageKey(LS_MASTERED))
+    removedKeys.value = id == null ? new Set() : loadSet(storageKey(LS_REMOVED))
+    selectedKeys.value = new Set()
+    selectionMode.value = false
+  }, { immediate: true })
 
   // ===== helpers =====
   function lookupSubject(bankId) {
@@ -221,14 +231,14 @@ export const useWrongBookStore = defineStore('wrongBook', () => {
     if (value) masteredOverrides.value.add(key)
     else masteredOverrides.value.delete(key)
     masteredOverrides.value = new Set(masteredOverrides.value)
-    saveSet(LS_MASTERED, masteredOverrides.value)
+    if (authStore.user?.id != null) saveSet(storageKey(LS_MASTERED), masteredOverrides.value)
     closeDrawer()
   }
 
   function removeEntry(key) {
     removedKeys.value.add(key)
     removedKeys.value = new Set(removedKeys.value)
-    saveSet(LS_REMOVED, removedKeys.value)
+    if (authStore.user?.id != null) saveSet(storageKey(LS_REMOVED), removedKeys.value)
     closeDrawer()
   }
 
@@ -237,7 +247,7 @@ export const useWrongBookStore = defineStore('wrongBook', () => {
     const set = new Set(removedKeys.value)
     for (const k of keys) set.add(k)
     removedKeys.value = set
-    saveSet(LS_REMOVED, removedKeys.value)
+    if (authStore.user?.id != null) saveSet(storageKey(LS_REMOVED), removedKeys.value)
     // 清理已失效的选中项
     const nextSelected = new Set(selectedKeys.value)
     for (const k of keys) nextSelected.delete(k)

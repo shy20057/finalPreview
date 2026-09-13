@@ -34,32 +34,54 @@
       </div>
       <div class="hero-right animate-fadeIn stagger-3">
         <div class="hero-illustration">
+          <!-- 装饰光点 -->
+          <div class="hero-sparkle hero-sparkle-1"></div>
+          <div class="hero-sparkle hero-sparkle-2"></div>
+          <div class="hero-sparkle hero-sparkle-3"></div>
+
           <div class="hero-card-stack">
+            <!-- 底层：书本 -->
             <div class="hero-card hero-card-back">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-muted">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-muted">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                <path d="M8 7h8M8 11h8M8 15h4" stroke-width="1"/>
+              </svg>
+              <span class="hero-card-label">智能题库</span>
+            </div>
+            <!-- 中层：对勾 -->
+            <div class="hero-card hero-card-mid">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--success)">
+                <path d="M9 11l3 3L22 4"/>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+              </svg>
+              <span class="hero-card-label" style="color: var(--success)">即时判分</span>
+            </div>
+            <!-- 前层：AI 解析 -->
+            <div class="hero-card hero-card-front">
+              <div class="hero-card-glow"></div>
+              <div class="hero-card-content">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--accent-primary)">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 16v-4M12 8h.01"/>
+                </svg>
+                <span class="hero-card-label" style="color: var(--accent-primary)">AI 解析</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 浮动徽章 -->
+          <div class="hero-float-badge">
+            <div class="badge-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
               </svg>
             </div>
-            <div class="hero-card hero-card-mid">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--success)">
-                <path d="M9 11l3 3L22 4"/>
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-              </svg>
+            <div class="badge-text">
+              <span class="badge-num">{{ bankStore.allBanks.length }}</span>
+              <span class="badge-label">题库已就绪</span>
             </div>
-            <div class="hero-card hero-card-front">
-              <div class="hero-card-content">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--accent-primary)">
-                  <circle cx="12" cy="12" r="10"/>
-                  <path d="M12 16v-4M12 8h.01"/>
-                </svg>
-                <span class="text-sm font-medium">AI 解析</span>
-              </div>
-            </div>
-          </div>
-          <div class="hero-float-badge">
-            <span class="text-accent font-bold text-sm">+{{ bankStore.allBanks.length }}</span>
-            <span class="text-muted text-xs">题库已就绪</span>
           </div>
         </div>
       </div>
@@ -399,68 +421,213 @@ async function resumeSession(session) {
   position: relative;
   width: 100%;
   height: 100%;
+  animation: hero-stack-float 6s ease-in-out infinite;
+}
+
+@keyframes hero-stack-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
 }
 
 .hero-card {
   position: absolute;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 0.5rem;
+}
+
+.hero-card-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .hero-card-back {
-  width: 180px;
-  height: 130px;
-  background: var(--bg-surface-raised);
+  width: 190px;
+  height: 140px;
+  background: linear-gradient(135deg, var(--bg-surface-raised), var(--bg-surface));
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-xl);
-  top: 20px;
-  left: 40px;
+  border-radius: 18px;
+  top: 15px;
+  left: 35px;
   transform: rotate(-8deg);
+  animation: hero-card-back-sway 8s ease-in-out infinite;
+}
+
+@keyframes hero-card-back-sway {
+  0%, 100% { transform: rotate(-8deg) translate(0, 0); }
+  50%      { transform: rotate(-6deg) translate(-3px, 2px); }
 }
 
 .hero-card-mid {
-  width: 160px;
-  height: 110px;
-  background: var(--bg-card);
+  width: 168px;
+  height: 118px;
+  background: linear-gradient(135deg, var(--bg-card), var(--bg-surface-raised));
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-xl);
-  top: 40px;
-  left: 70px;
+  border-radius: 16px;
+  top: 38px;
+  left: 66px;
   transform: rotate(-3deg);
+  animation: hero-card-mid-sway 7s ease-in-out infinite;
+  animation-delay: -1.5s;
+}
+
+@keyframes hero-card-mid-sway {
+  0%, 100% { transform: rotate(-3deg) translate(0, 0); }
+  50%      { transform: rotate(-1deg) translate(2px, -3px); }
 }
 
 .hero-card-front {
-  width: 140px;
-  height: 96px;
-  background: var(--bg-card);
+  width: 148px;
+  height: 104px;
+  background: linear-gradient(135deg, var(--bg-card), var(--bg-surface-raised));
   border: 1px solid var(--accent-border);
-  border-radius: var(--radius-xl);
-  top: 55px;
-  left: 90px;
+  border-radius: 14px;
+  top: 52px;
+  left: 86px;
   box-shadow: 0 8px 24px rgba(91, 138, 204, 0.25);
+  animation: hero-card-front-pulse 3.5s ease-in-out infinite;
+  overflow: hidden;
+}
+
+.hero-card-glow {
+  position: absolute;
+  top: -30%;
+  left: -10%;
+  width: 120%;
+  height: 60%;
+  background: radial-gradient(ellipse, rgba(91, 138, 204, 0.15), transparent 70%);
+  pointer-events: none;
+}
+
+@keyframes hero-card-front-pulse {
+  0%, 100% {
+    box-shadow: 0 8px 24px rgba(91, 138, 204, 0.25);
+    transform: translateY(0);
+  }
+  50% {
+    box-shadow: 0 12px 32px rgba(91, 138, 204, 0.4);
+    transform: translateY(-4px);
+  }
 }
 
 .hero-card-content {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.375rem;
 }
 
+.hero-card-content svg {
+  animation: hero-ai-spin 4s ease-in-out infinite;
+}
+
+@keyframes hero-ai-spin {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25%      { transform: scale(1.1) rotate(-5deg); }
+  75%      { transform: scale(1.1) rotate(5deg); }
+}
+
+/* 装饰光点 */
+.hero-sparkle {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  pointer-events: none;
+}
+
+.hero-sparkle-1 {
+  width: 6px; height: 6px;
+  top: 10px; right: 30px;
+  opacity: 0.5;
+  animation: sparkle-twinkle 2s ease-in-out infinite;
+}
+
+.hero-sparkle-2 {
+  width: 4px; height: 4px;
+  top: 60px; right: 0;
+  opacity: 0.4;
+  animation: sparkle-twinkle 2.5s ease-in-out infinite;
+  animation-delay: -0.8s;
+}
+
+.hero-sparkle-3 {
+  width: 5px; height: 5px;
+  bottom: 50px; left: 10px;
+  opacity: 0.45;
+  animation: sparkle-twinkle 3s ease-in-out infinite;
+  animation-delay: -1.5s;
+}
+
+@keyframes sparkle-twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.8); }
+  50%      { opacity: 0.7; transform: scale(1.2); }
+}
+
 .hero-float-badge {
   position: absolute;
-  bottom: 0;
-  right: 10px;
+  bottom: -8px;
+  right: 5px;
   background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--accent-border);
+  border-radius: 12px;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  animation: hero-badge-bob 4s ease-in-out infinite;
+  animation-delay: -2s;
+}
+
+.badge-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-primary);
+}
+
+.badge-text {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.125rem;
-  box-shadow: var(--shadow-md);
+  gap: 0;
+}
+
+.badge-num {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.badge-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+@keyframes hero-badge-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-card-stack,
+  .hero-card-back,
+  .hero-card-mid,
+  .hero-card-front,
+  .hero-card-content svg,
+  .hero-float-badge {
+    animation: none !important;
+  }
 }
 /* ===== Mode Section ===== */
 .mode-section {

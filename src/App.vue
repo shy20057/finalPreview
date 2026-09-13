@@ -1,14 +1,20 @@
 <template>
-  <div class="app" :data-theme="appStore.theme">
+  <div class="app" :data-theme="appStore.theme" :class="{ 'app--auth': isAuthPage }">
+    <!-- 登录/注册页：独立全屏，无顶栏无滚动 -->
+    <main v-if="isAuthPage" class="app-auth-main">
+      <router-view v-slot="{ Component }">
+        <component :is="Component" />
+      </router-view>
+    </main>
+
+    <!-- 正常应用布局 -->
+    <template v-else>
     <!-- 顶栏 -->
     <header class="app-header">
       <div class="header-inner">
         <div class="header-left">
         <router-link to="/" class="logo">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-            </svg>
+            <img class="logo-mark" src="/icon.svg" alt="" aria-hidden="true" />
             <span>期末复习</span>
           </router-link>
 
@@ -18,12 +24,26 @@
             <router-link to="/history" class="nav-link" active-class="active">历史</router-link>
             <router-link to="/wrongbook" class="nav-link" active-class="active">错题</router-link>
             <router-link to="/favorites" class="nav-link" active-class="active">收藏</router-link>
+            <router-link to="/profile" class="nav-link" active-class="active">个人中心</router-link>
             <router-link to="/settings" class="nav-link" active-class="active">设置</router-link>
           </nav>
         </div>
 
         <div class="header-right">
           <DynamicBadge class="hide-mobile" />
+          <div v-if="authStore.isLoggedIn" class="user-menu">
+            <router-link to="/profile" class="user-profile-link" title="个人中心" aria-label="进入个人中心">
+              <span class="user-avatar">{{ authStore.username.slice(0, 1).toUpperCase() }}</span>
+              <span class="user-name hide-mobile">{{ authStore.username }}</span>
+            </router-link>
+            <button class="logout-btn" @click="authStore.logout()" title="退出登录">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </button>
+          </div>
           <button class="theme-toggle" @click="appStore.cycleTheme" :title="themeTitle">
             <!-- Sun (light) -->
             <svg v-if="appStore.theme === 'light'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -61,30 +81,38 @@
         </Transition>
       </router-view>
     </main>
+    </template>
 
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAppStore } from './stores/app.js'
+import { useAuthStore } from './stores/auth.js'
 import DynamicBadge from './components/DynamicBadge.vue'
 import CommandPalette from './components/CommandPalette.vue'
 import FloatingIslandMenu from './components/FloatingIslandMenu.vue'
 import MobileDrawer from './components/MobileDrawer.vue'
 
+const route = useRoute()
 const mobileDrawerRef = ref(null)
 
 const appStore = useAppStore()
+const authStore = useAuthStore()
+watch(() => authStore.user?.id, id => appStore.initTheme(id), { immediate: true })
+
+const isAuthPage = computed(() => route.meta?.public === true)
 
 const themeTitle = computed(() => {
   if (appStore.theme === 'light') return '浅色主题'
   return '暗蓝风格'
 })
 
-onMounted(() => {
-  appStore.initTheme()
-  appStore.fetchAiConfigs()
+onMounted(async () => {
+  await authStore.init()
+  if (authStore.isLoggedIn) await appStore.fetchAiConfigs().catch(() => {})
 })
 </script>
 
@@ -94,6 +122,16 @@ onMounted(() => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.app--auth {
+  overflow: hidden;
+}
+
+.app-auth-main {
+  flex: 1;
+  overflow: hidden;
+  height: 100vh;
 }
 
 .app-header {
@@ -140,6 +178,12 @@ onMounted(() => {
   text-decoration: none;
 }
 
+.logo-mark {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
 .header-nav {
   display: flex;
   align-items: center;
@@ -170,6 +214,73 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem 0.25rem 0.75rem;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+}
+
+.user-profile-link {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.user-profile-link:hover .user-name,
+.user-profile-link.router-link-active .user-name {
+  color: var(--text-primary);
+}
+
+.user-avatar {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--accent-gradient);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.user-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--accent-primary);
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.logout-btn:hover {
+  color: #f43f5e;
+  border-color: rgba(244, 63, 94, 0.4);
+  background: rgba(244, 63, 94, 0.08);
 }
 
 .theme-toggle {
@@ -258,4 +369,3 @@ onMounted(() => {
   }
 }
 </style>
-

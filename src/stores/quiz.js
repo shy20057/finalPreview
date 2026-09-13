@@ -12,11 +12,11 @@ export const useQuizStore = defineStore('quiz', () => {
   const startTime = ref(null)
   const endTime = ref(null)
   const wrongQuestionIds = ref([])
+  const submittedQuestionIds = ref([])
   const currentNote = ref(null)
   const noteSaving = ref(false)
   const batchMode = ref(false)
   const selectedQuestionIds = ref([])
-  // questionId → whether this question has a note (content length > 0)
   const questionNoteMap = ref({})
 
   const currentQuestion = computed(() => questions.value[currentIndex.value] || null)
@@ -258,6 +258,7 @@ export const useQuizStore = defineStore('quiz', () => {
     endTime.value = null
     startTime.value = Date.now()
     wrongQuestionIds.value = []
+    submittedQuestionIds.value = []
     if (shuffled.value) {
       questions.value = [...questions.value].sort(() => Math.random() - 0.5)
     }
@@ -296,6 +297,16 @@ export const useQuizStore = defineStore('quiz', () => {
     }
     if (q.type === 'essay') return ans && ans.trim().length > 0 ? 'correct' : 'unanswered'
     return 'unanswered'
+  }
+
+  function markSubmitted(questionId) {
+    if (!submittedQuestionIds.value.includes(questionId)) {
+      submittedQuestionIds.value.push(questionId)
+    }
+  }
+
+  function isSubmitted(questionId) {
+    return submittedQuestionIds.value.includes(questionId)
   }
 
   async function loadCurrentNote() {
@@ -417,6 +428,8 @@ export const useQuizStore = defineStore('quiz', () => {
     setMode,
     toggleShuffle,
     getQuestionStatus,
+    markSubmitted,
+    isSubmitted,
     loadCurrentNote,
     saveCurrentNote,
     loadAllNotesForBank,

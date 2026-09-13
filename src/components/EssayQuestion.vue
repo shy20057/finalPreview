@@ -146,6 +146,7 @@ watch(userAnswer, (val) => {
 function submitAnswer() {
   if (userAnswer.value.trim()) {
     submitted.value = true
+    quizStore.markSubmitted(props.question.id)
     emit('answer', userAnswer.value.trim())
   }
 }

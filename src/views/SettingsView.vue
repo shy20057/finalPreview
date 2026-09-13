@@ -269,7 +269,12 @@ async function testAiConfig() {
 }
 
 onMounted(async () => {
-  await appStore.fetchAiConfigs()
+  try {
+    await appStore.fetchAiConfigs()
+  } catch {
+    aiTestResult.value = 'AI 配置加载失败，请检查服务端连接'
+    aiTestOk.value = false
+  }
   const def = appStore.allAiConfigs.find(c => c.isDefault) || appStore.allAiConfigs[0]
   if (def) {
     editingProvider.value = def.name

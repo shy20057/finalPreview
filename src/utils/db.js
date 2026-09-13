@@ -57,8 +57,36 @@ async function migrateFromLocalStorage() {
 // Ensure migration runs before any DB access
 const migrationPromise = migrateFromLocalStorage()
 
+/**
+ * 首次访问且数据库为空时，注入演示题库让新用户开箱即用。
+ * localStorage 中通过 'demo-seeded' 标记，避免重复播种或覆盖用户主动清空的数据。
+ */
+const SEED_FLAG = 'demo-seeded'
+
+async function seedDemoBanksIfNeeded() {
+  await migrationPromise
+  // 已播种过则不再自动注入
+  if (localStorage.getItem(SEED_FLAG)) return
+  const count = await db.banks.count()
+  if (count === 0) {
+    const { demoBanks } = await import('./demoSeed.js')
+    const seeded = demoBanks.map(b => ({
+      ...b,
+      createdAt: new Date().toISOString(),
+    }))
+    await db.banks.bulkAdd(seeded)
+    localStorage.setItem(SEED_FLAG, '1')
+  } else {
+    // 数据库已有题库（可能是从旧 localStorage 迁移过来），标记为已播种
+    localStorage.setItem(SEED_FLAG, '1')
+  }
+}
+
+const seedPromise = seedDemoBanksIfNeeded()
+
 export async function loadBanks() {
   await migrationPromise
+  await seedPromise
   return db.banks.toArray()
 }
 
