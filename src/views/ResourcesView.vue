@@ -117,7 +117,7 @@ const showHidden = ref(false)
 const undoInfo = ref(null)  // { id, title, timer }
 const UNDO_TIMEOUT = 5000
 
-// 资源数据（保留原 6 张硬编码资源作为内置数据）
+// 内置学习资源
 const allResources = [
   {
     id: 'disk-scheduling',
@@ -162,7 +162,7 @@ const allResources = [
     desc: '以动画形式逐步讲解分页、分段、段页式存储管理原理，辅以文字讲解，重点剖析地址翻译过程。',
     tags: ['HTML 演示', '动画讲解', '操作系统'],
     iconPath: '<rect x="2" y="4" width="20" height="16" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="2" y1="16" x2="22" y2="16"/><polygon points="17,7 20,4 23,7"/><line x1="20" y1="4" x2="20" y2="11"/>',
-    iconStyle: 'background: rgba(59, 130, 246, 0.1); color: #60a5fa;',
+    iconStyle: '',
   },
   {
     id: 'memory-recycle',
@@ -171,7 +171,16 @@ const allResources = [
     desc: '动画演示释放区与空闲分区 F1/F2 的四种相邻关系及对应分区表操作，含分步讲解与总结对比。',
     tags: ['HTML 演示', '动画讲解', '操作系统'],
     iconPath: '<rect x="2" y="2" width="20" height="20" rx="3"/><line x1="2" y1="8" x2="22" y2="8"/><line x1="2" y1="14" x2="22" y2="14"/><line x1="8" y1="8" x2="8" y2="22"/><line x1="16" y1="8" x2="16" y2="22"/><path d="M9 11l2 2 4-4"/>',
-    iconStyle: 'background: rgba(244, 63, 94, 0.1); color: #f87171;',
+    iconStyle: '',
+  },
+  {
+    id: 'leaders',
+    file: 'leaders',
+    title: '党和国家领导人任期对照表',
+    desc: '邓小平至习近平，历届党代会（5年一届）与全国人大（每年例会）完整对照，含任期年份与重要节点说明。',
+    tags: ['政治常识', '历史政治'],
+    iconPath: '<path d="M3 21h18M3 7h18M3 14h18M5 7v10M9 7v10M13 7v10M17 7v10M19 7v10"/>',
+    iconStyle: '',
   },
   {
     id: '2026-06-28-qa',
@@ -180,7 +189,7 @@ const allResources = [
     desc: '2026.06.28 下午问答精编，涵盖虚拟内存、TLB、计算机网络分类、IP首部、交换机原理等 14 个问答。',
     tags: ['问答速记', '操作系统', '计算机网络'],
     iconPath: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
-    iconStyle: 'background: rgba(34, 197, 94, 0.1); color: #22c55e;',
+    iconStyle: '',
   },
 ]
 

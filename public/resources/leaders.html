@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>党和国家领导人任期与重要会议对照表</title>
+  <style>
+    :root {
+      --bg-primary: #0d0e1a;
+      --bg-surface: #161628;
+      --bg-card: #1a1a2e;
+      --bg-surface-raised: #1e1e38;
+      --text-primary: #e8e8f0;
+      --text-secondary: #9898b0;
+      --text-muted: #606078;
+      --accent-primary: #7c8dbd;
+      --border-color: #2a2a45;
+      --success: #22c55e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      padding: 1.5rem;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 0.4rem;
+      text-align: center;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-bottom: 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+    .legend span { display: flex; align-items: center; gap: 0.35rem; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+    table {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+
+    thead th {
+      background: var(--bg-surface-raised);
+      color: var(--text-primary);
+      font-weight: 600;
+      font-size: 0.75rem;
+      padding: 0.6rem 0.4rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    thead th:first-child { text-align: left; padding-left: 0.75rem; }
+    thead th:last-child { text-align: left; padding-left: 0.5rem; }
+
+    tbody tr { border-bottom: 1px solid var(--border-color); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover td { background: rgba(255,255,255,0.02); }
+
+    td {
+      padding: 0.65rem 0.4rem;
+      vertical-align: top;
+      color: var(--text-secondary);
+      font-size: 0.78rem;
+    }
+    td:first-child { padding-left: 0.75rem; text-align: left; vertical-align: middle; }
+    td:last-child { padding-left: 0.5rem; }
+
+    .leader-name { font-weight: 600; color: var(--text-primary); font-size: 0.85rem; }
+    .leader-role { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+    .period { font-size: 0.75rem; white-space: nowrap; color: var(--text-secondary); }
+    .period-note { font-size: 0.68rem; color: var(--text-muted); margin-top: 2px; }
+
+    .meet-list { display: flex; flex-direction: column; gap: 0.2rem; }
+    .meet-item { display: flex; align-items: baseline; gap: 0.35rem; }
+    .badge {
+      font-size: 0.6rem;
+      padding: 0.08rem 0.3rem;
+      border-radius: 3px;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .badge-dj   { background: rgba(220, 38, 38, 0.15);  color: #f87171; }
+    .badge-ds   { background: rgba(234, 179, 8, 0.15);   color: #fbbf24; }
+    .badge-dsh  { background: rgba(59, 130, 246, 0.15);  color: #60a5fa; }
+    .badge-dx   { background: rgba(34, 197, 94, 0.15);   color: #4ade80; }
+    .badge-npc  { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
+
+    .event-item {
+      display: flex;
+      align-items: baseline;
+      gap: 0.3rem;
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.15rem;
+    }
+    .event-item::before {
+      content: '·';
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .current { color: var(--success); font-weight: 600; font-size: 0.65rem; }
+    .divider { background: var(--bg-surface-raised); border: none; height: 1px; }
+
+    @media (max-width: 900px) {
+      body { padding: 1rem; }
+      table { font-size: 0.72rem; }
+      .meet-item { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<h1>党和国家领导人任期与重要会议对照表</h1>
+<p class="subtitle">中共全国代表大会（党代会，5年一届）&nbsp;·&nbsp;全国人民代表大会（人大，每年例会）</p>
+
+<div class="legend">
+  <span><span class="dot" style="background:#f87171;"></span>党代会</span>
+  <span><span class="dot" style="background:#c084fc;"></span>全国人大</span>
+  <span><span class="dot" style="background:#fbbf24;"></span>中全会/特别会议</span>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>领导人</th>
+      <th>任期</th>
+      <th>期间重要会议</th>
+      <th>核心事件</th>
+    </tr>
+  </thead>
+  <tbody>
+
+    <!-- 邓小平 -->
+    <tr>
+      <td>
+        <div class="leader-name">邓小平</div>
+        <div class="leader-role">实质领导核心</div>
+      </td>
+      <td>
+        <div class="period">1978 ─ 1989</div>
+        <div class="period-note">十一届三中全会为起点</div>
+      </td>
+      <td>
+        <div class="meet-list">
+          <div class="meet-item">
+            <span class="badge badge-dj">十一大</span>
+            <span>1977</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;">十一届三中全会</span>
+            <span>1978</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge badge-dj">十二大</span>
+            <span>1982</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge badge-dj">十三大</span>
+            <span>1987</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge badge-npc">五届人大</span>
+            <span>1978</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge badge-npc">六届人大</span>
+            <span>1983</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge badge-npc">七届人大</span>
+            <span>1988</span>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="event-item">确立改革开放基本国策</div>
+        <div class="event-item">家庭联产承包责任制推开</div>
+        <div class="event-item">设立深圳、珠海等经济特区</div>
+        <div class="event-item">提出"一国两制"构想</div>
+        <div class="event-item">十二大确立"走中国特色社义道路"</div>
+        <div class="event-item">十二届三中全会确立社会主义商品经济</div>
+        <div class="event-item">十三大提出"一个中心、两个基本点"基本路线</div>
+        <div class="event-item">1989年政治风波</div>
+      </td>
+    </tr>
+
+    <tr class="divider"><td colspan="4"></td></tr>
+
+    <!-- 江泽民 -->
+    <tr>
+      <td>
+        <div class="leader-name">江泽民</div>
+        <div class="leader-role">党和国家领导人</div>
+      </td>
+      <td>
+        <div class="period">1993 ─ 2003</div>
+        <div class="period-note">总书记：1989 ─ 2002</div>
+      </td>
+      <td>
+        <div class="meet-list">
+          <div class="meet-item">
+            <span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;">十三届四中全会</span>
+            <span>1989</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge badge-dj">十四大</span>
+            <span>1992</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge badge-npc">八届人大</span>
+            <span>1993</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;">十五届四中全会</span>
+            <span>1999</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge badge-dj">十五大</span>
+            <span>1997</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge badge-npc">九届人大</span>
+            <span>1998</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge badge-dj">十六大</span>
+            <span>2002（交棒）</span>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="event-item">1989年十三届四中全会确立核心地位</div>
+        <div class="event-item">十四大确立社会主义市场经济体制改革目标</div>
+        <div class="event-item">确立邓小平理论为党的指导思想</div>
+        <div class="event-item">1997年十五大确立邓小平理论为指导思想</div>
+        <div class="event-item">十五届四中全会确定国企改革"抓大放小"方向</div>
+        <div class="event-item">1999年澳门回归</div>
+        <div class="event-item">2001年加入世界贸易组织（WTO）</div>
+        <div class="event-item">2002年十六大确立"三个代表"重要思想</div>
+        <div class="event-item">2002年完成总书记交接</div>
+      </td>
+    </tr>
+
+    <tr class="divider"><td colspan="4"></td></tr>
+
+    <!-- 胡锦涛 -->
+    <tr>
+      <td>
+        <div class="leader-name">胡锦涛</div>
+        <div class="leader-role">党和国家领导人</div>
+      </td>
+      <td>
+        <div class="period">2003 ─ 2013</div>
+        <div class="period-note">总书记：2002 ─ 2012</div>
+      </td>
+      <td>
+        <div class="meet-list">
+          <div class="meet-item">
+            <span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;">十六届三中全会</span>
+            <span>2003</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge badge-dj">十七大</span>
+            <span>2007</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge badge-npc">十届人大</span>
+            <span>2003</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge badge-npc">十一届人大</span>
+            <span>2008</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge badge-dj">十八大</span>
+            <span>2012（交棒）</span>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="event-item">十六届三中全会提出科学发展观</div>
+        <div class="event-item">2008北京奥运会成功举办</div>
+        <div class="event-item">2010上海世博会成功举办</div>
+        <div class="event-item">2011年天宫一号发射成功</div>
+        <div class="event-item">2012年十八大确立科学发展观为党指导思想</div>
+        <div class="event-item">2012年完成总书记交接</div>
+      </td>
+    </tr>
+
+    <tr class="divider"><td colspan="4"></td></tr>
+
+    <!-- 习近平 -->
+    <tr>
+      <td>
+        <div class="leader-name">习近平</div>
+        <div class="leader-role">党和国家领导人</div>
+      </td>
+      <td>
+        <div class="period">2013 ─ 至今</div>
+        <div class="period-note">总书记：2012 ─ 至今</div>
+        <div class="current">● 进行中</div>
+      </td>
+      <td>
+        <div class="meet-list">
+          <div class="meet-item">
+            <span class="badge badge-dj">十九大</span>
+            <span>2017</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge badge-dj">二十大</span>
+            <span>2022</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge badge-npc">十二届人大</span>
+            <span>2013</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge badge-npc">十三届人大</span>
+            <span>2018</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge badge-npc">十四届人大</span>
+            <span>2023</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;">十八届三中全会</span>
+            <span>2013</span>
+          </div>
+          <div class="meet-item">
+            <span class="badge" style="background:rgba(251,191,36,0.15);color:#fbbf24;">二十届三中全会</span>
+            <span>2024</span>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="event-item">2013年十八届三中全会全面深化改革</div>
+        <div class="event-item">2013年提出"一带一路"倡议</div>
+        <div class="event-item">2014年设立中央全面深化改革领导小组</div>
+        <div class="event-item">2015年十八届五中全会确立"十三五"规划</div>
+        <div class="event-item">2017年十九大确立习近平新时代中国特色社会主义思想</div>
+        <div class="event-item">2019年澳门回归20周年</div>
+        <div class="event-item">2019年建国70周年</div>
+        <div class="event-item">2020年全面建成小康社会（脱贫攻坚）</div>
+        <div class="event-item">2021年建党100周年</div>
+        <div class="event-item">2022年二十大确立"两个确立""两个维护"</div>
+        <div class="event-item">2023年新冠疫情防控政策优化调整</div>
+        <div class="event-item">2024年二十届三中全会进一步全面深化改革</div>
+      </td>
+    </tr>
+
+  </tbody>
+</table>
+
+</body>
+</html>

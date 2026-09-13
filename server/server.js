@@ -210,48 +210,25 @@ app.delete('/api/history', (req, res) => {
   res.json({ success: true })
 })
 
-// PUT /api/history/session — 退出时保存/更新练习记录（UPSERT，以 bankId+mode 为键）
+// PUT /api/history/session — 退出时保存练习记录（每次新增一条，不覆盖）
 app.put('/api/history/session', (req, res) => {
   const { bankId, bankName, mode, score, correctCount, wrongCount, totalQuestions, duration, answers, wrongQuestionIds, wrongQuestions } = req.body
   if (!bankId) return res.status(400).json({ error: 'bankId is required' })
   const now = new Date().toISOString()
 
-  const existing = db.prepare(
-    'SELECT id FROM history WHERE bankId = ? AND mode = ? ORDER BY date DESC LIMIT 1'
-  ).get(bankId, mode || 'practice')
-
-  if (existing) {
-    db.prepare(`
-      UPDATE history SET
-        bankName = ?, mode = ?, score = ?, correctCount = ?, wrongCount = ?,
-        totalQuestions = ?, duration = ?, answers = ?, wrongQuestionIds = ?,
-        wrongQuestions = ?, date = ?
-      WHERE id = ?
-    `).run(
-      bankName || '', mode || 'practice', score ?? 0, correctCount ?? 0, wrongCount ?? 0,
-      totalQuestions ?? 0, duration ?? 0,
-      JSON.stringify(answers || {}),
-      JSON.stringify(wrongQuestionIds || []),
-      JSON.stringify(wrongQuestions || []),
-      now,
-      existing.id
-    )
-    res.json({ id: existing.id, updated: true, date: now })
-  } else {
-    const stmt = db.prepare(`
-      INSERT INTO history (bankId, bankName, mode, score, correctCount, wrongCount, totalQuestions, duration, answers, wrongQuestionIds, wrongQuestions, date)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `)
-    const result = stmt.run(
-      bankId, bankName || '', mode || 'practice', score ?? 0, correctCount ?? 0, wrongCount ?? 0,
-      totalQuestions ?? 0, duration ?? 0,
-      JSON.stringify(answers || {}),
-      JSON.stringify(wrongQuestionIds || []),
-      JSON.stringify(wrongQuestions || []),
-      now
-    )
-    res.json({ id: result.lastInsertRowid, updated: false, date: now })
-  }
+  const stmt = db.prepare(`
+    INSERT INTO history (bankId, bankName, mode, score, correctCount, wrongCount, totalQuestions, duration, answers, wrongQuestionIds, wrongQuestions, date)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `)
+  const result = stmt.run(
+    bankId, bankName || '', mode || 'practice', score ?? 0, correctCount ?? 0, wrongCount ?? 0,
+    totalQuestions ?? 0, duration ?? 0,
+    JSON.stringify(answers || {}),
+    JSON.stringify(wrongQuestionIds || []),
+    JSON.stringify(wrongQuestions || []),
+    now
+  )
+  res.json({ id: result.lastInsertRowid, date: now })
 })
 
 // ===== FAVORITES =====
@@ -386,7 +363,7 @@ app.post('/api/notes/batch-delete', (req, res) => {
 
 // GET /api/notes?bankId=xxx
 app.get('/api/notes', (req, res) => {
-  const bankId = req.query.bankId
+  const bankId = req.query.bankId ? Number(req.query.bankId) : undefined
   let rows
   if (bankId !== undefined) {
     rows = db.prepare('SELECT * FROM notes WHERE bankId = ? ORDER BY id ASC').all(bankId)
@@ -428,10 +405,13 @@ app.get('/api/notes/quiz', (req, res) => {
 
 // GET /api/notes/:bankId/:questionId
 app.get('/api/notes/:bankId/:questionId', (req, res) => {
-  const { bankId, questionId } = req.params
+  const bankId = Number(req.params.bankId)
+  const questionId = Number(req.params.questionId)
+  console.log('[GET /api/notes] bankId=', bankId, 'questionId=', questionId, 'types:', typeof bankId, typeof questionId)
   const row = db.prepare(
     'SELECT * FROM notes WHERE bankId = ? AND questionId = ?'
   ).get(bankId, questionId)
+  console.log('[GET /api/notes] row:', row ? { content: row.content?.substring(0, 50), contentHasNewline: row.content?.includes('\n') } : null)
   if (!row) return res.json(null)
   res.json(row)
 })
@@ -471,11 +451,14 @@ app.post('/api/notes', (req, res, next) => {
 
 // POST /api/notes  body: { bankId, questionId, content }
 app.post('/api/notes', (req, res) => {
-  const { bankId, questionId, content } = req.body
-  if (bankId === undefined || questionId === undefined) {
+  const bankId = Number(req.body.bankId)
+  const questionId = Number(req.body.questionId)
+  const { content } = req.body
+  if (isNaN(bankId) || isNaN(questionId)) {
     return res.status(400).json({ error: 'bankId and questionId are required' })
   }
   const now = new Date().toISOString()
+  console.log('[POST /api/notes] saving bankId=', bankId, 'questionId=', questionId, 'content length=', (content || '').length, 'has newline:', (content || '').includes('\n'))
   const stmt = db.prepare(`
     INSERT INTO notes (bankId, questionId, content, createdAt, updatedAt)
     VALUES (?, ?, ?, ?, ?)
@@ -487,12 +470,14 @@ app.post('/api/notes', (req, res) => {
   const row = db.prepare(
     'SELECT * FROM notes WHERE bankId = ? AND questionId = ?'
   ).get(bankId, questionId)
+  console.log('[POST /api/notes] saved, row content has newline:', row?.content?.includes('\n'))
   res.json(row)
 })
 
 // DELETE /api/notes/:bankId/:questionId
 app.delete('/api/notes/:bankId/:questionId', (req, res) => {
-  const { bankId, questionId } = req.params
+  const bankId = Number(req.params.bankId)
+  const questionId = Number(req.params.questionId)
   db.prepare('DELETE FROM notes WHERE bankId = ? AND questionId = ?')
     .run(bankId, questionId)
   res.json({ success: true })

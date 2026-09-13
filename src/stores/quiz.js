@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import { getNote, saveNote, loadNotesByBank, getSession, saveSession, deleteSession, upsertHistorySession } from '../utils/storage.js'
+import { getNote, saveNote, loadNotesByBank, getSession, saveSession, deleteSession } from '../utils/storage.js'
 
 export const useQuizStore = defineStore('quiz', () => {
   const bankId = ref(null)
@@ -166,13 +166,14 @@ export const useQuizStore = defineStore('quiz', () => {
   }
 
   /**
-   * Persist current quiz state to server.
-   * @param {Object} extra - extra fields: bankName, wrongQuestions (full objects from buildWrongQuestions)
+   * Persist current quiz state to server (session only, not history).
+   * Called on every answer, navigation, and exit — only writes to quiz_sessions table
+   * for progress recovery. History is written only on finishQuiz.
    */
-  async function persistSession(extra = {}) {
+  async function persistSession() {
     if (!bankId.value) return
     try {
-      const sessionData = {
+      await saveSession({
         bankId: bankId.value,
         questionOrder: questions.value.map(q => q.id),
         answers: answers.value,
@@ -181,31 +182,7 @@ export const useQuizStore = defineStore('quiz', () => {
         shuffled: shuffled.value,
         startTime: startTime.value,
         wrongIds: wrongQuestionIds.value,
-        // 完整统计及错题对象（来自 extra）
-        bankName: extra.bankName || '',
-        score: extra.score ?? 0,
-        correctCount: extra.correctCount ?? 0,
-        wrongCount: extra.wrongCount ?? 0,
-        totalQuestions: extra.totalQuestions ?? 0,
-        duration: extra.duration ?? 0,
-        wrongQuestions: extra.wrongQuestions || [],
-        answers: answers.value,
-        wrongQuestionIds: wrongQuestionIds.value,
-      }
-      // 并行写 session 表（恢复进度）和 history UPSERT（错题本）
-      await Promise.all([
-        saveSession({
-          bankId: bankId.value,
-          questionOrder: sessionData.questionOrder,
-          answers: answers.value,
-          currentIndex: currentIndex.value,
-          mode: mode.value,
-          shuffled: shuffled.value,
-          startTime: startTime.value,
-          wrongIds: wrongQuestionIds.value,
-        }),
-        upsertHistorySession(sessionData),
-      ])
+      })
     } catch (e) {
       console.error('保存答题进度失败:', e)
     }

@@ -525,17 +525,17 @@ function toggleShuffle() {
 
 function handleAnswer(answer) {
   quizStore.submitAnswer(answer)
-  quizStore.persistSession({ bankName: bank.value?.name, score: quizStore.finalScore, correctCount: quizStore.correctCount, wrongCount: quizStore.wrongCount, totalQuestions: quizStore.totalQuestions, duration: quizStore.duration, wrongQuestions: buildWrongQuestions() })
+  quizStore.persistSession()
 }
 
 function nextQuestion() {
   quizStore.nextQuestion()
-  quizStore.persistSession({ bankName: bank.value?.name, score: quizStore.finalScore, correctCount: quizStore.correctCount, wrongCount: quizStore.wrongCount, totalQuestions: quizStore.totalQuestions, duration: quizStore.duration, wrongQuestions: buildWrongQuestions() })
+  quizStore.persistSession()
 }
 
 function prevQuestion() {
   quizStore.prevQuestion()
-  quizStore.persistSession({ bankName: bank.value?.name, score: quizStore.finalScore, correctCount: quizStore.correctCount, wrongCount: quizStore.wrongCount, totalQuestions: quizStore.totalQuestions, duration: quizStore.duration, wrongQuestions: buildWrongQuestions() })
+  quizStore.persistSession()
 }
 
 const isCurrentFav = computed(() => {
@@ -613,8 +613,8 @@ async function exitQuiz() {
 
 async function confirmExit() {
   showExitConfirm.value = false
-  await quizStore.persistSession({ bankName: bank.value?.name, score: quizStore.finalScore, correctCount: quizStore.correctCount, wrongCount: quizStore.wrongCount, totalQuestions: quizStore.totalQuestions, duration: quizStore.duration, wrongQuestions: buildWrongQuestions() })
-  router.push('/')
+  await quizStore.persistSession()
+  await router.push('/')
 }
 
 function handleBatchDelete() {
@@ -679,7 +679,8 @@ onMounted(async () => {
   favoriteStore.load()
   const b = bank.value
   if (!b) {
-    quizLoading.value = false
+    // 题库不存在，保持骨架屏直接跳转，不渲染空白
+    router.push('/')
     return
   }
   // 尝试加载上次的答题进度
