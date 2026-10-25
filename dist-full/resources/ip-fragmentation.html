@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IP 分片与 TCP 报文讲解动画</title>
+  <style>
+    :root {
+      --bg: #0d0e1a;
+      --surface: #161628;
+      --card: #1a1a2e;
+      --text: #e8e8f0;
+      --muted: #9898b0;
+      --accent: #059669;
+      --accent2: #10b981;
+      --warning: #f59e0b;
+      --error: #f43f5e;
+      --border: rgba(255,255,255,0.08);
+      --header-ip: #3b82f6;
+      --tcp: #8b5cf6;
+      --data: #64748b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 1.5rem;
+      min-height: 100vh;
+    }
+    h1 { text-align: center; margin-bottom: 0.2rem; font-size: 1.5rem; }
+    .subtitle { text-align: center; color: var(--muted); margin-bottom: 1rem; font-size: 0.85rem; }
+
+    /* 题目选择 */
+    .tab-nav {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      justify-content: center;
+    }
+    .tab-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 0.5rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .tab-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .tab-btn:hover:not(.active) { border-color: var(--accent); color: var(--text); }
+
+    /* 面板 */
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .panel-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .panel-title .num {
+      background: var(--accent);
+      color: #fff;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+    }
+
+    /* 动画舞台 */
+    .stage {
+      background: var(--surface);
+      border-radius: 10px;
+      padding: 1.5rem;
+      min-height: 320px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 报文可视化 */
+    .packet-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .packet-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      width: 100%;
+      max-width: 700px;
+    }
+    .packet-label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      width: 80px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .packet {
+      display: flex;
+      border-radius: 6px;
+      overflow: hidden;
+      height: 36px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      transition: all 0.3s ease;
+    }
+    .packet-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #fff;
+      min-width: 60px;
+    }
+    .packet-ip { background: var(--header-ip); }
+    .packet-tcp { background: var(--tcp); }
+    .packet-data { background: var(--data); }
+    .packet-body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      color: #fff;
+      padding: 0 0.75rem;
+    }
+
+    /* 分片结果 */
+    .fragment-result {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    .fragment-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .fragment-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      width: 80px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .fragment-bar {
+      height: 28px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      color: #fff;
+      font-weight: 600;
+      position: relative;
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .fragment-bar.ip-header { background: var(--header-ip); }
+    .fragment-bar.tcp-header { background: var(--tcp); }
+    .fragment-bar.data { background: var(--data); }
+    .fragment-bar.end { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+    .fragment-info {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-left: 0.5rem;
+    }
+
+    /* 动画箭头 */
+    .arrow-down {
+      text-align: center;
+      color: var(--accent);
+      font-size: 1.5rem;
+      animation: bounce 1s infinite;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); opacity: 1; }
+      50% { transform: translateY(5px); opacity: 0.5; }
+    }
+
+    /* 字段解释 */
+    .field-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      margin-top: 0.75rem;
+    }
+    .field-table th, .field-table td {
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .field-table th { color: var(--muted); font-weight: 500; }
+    .field-table td:first-child { color: var(--accent); font-family: monospace; }
+
+    /* 步骤说明 */
+    .step-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    .step-item {
+      display: flex;
+      gap: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      background: var(--surface);
+      border-radius: 8px;
+      font-size: 0.82rem;
+      opacity: 0;
+      transform: translateX(-10px);
+      transition: all 0.3s ease;
+    }
+    .step-item.show {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    .step-num {
+      width: 22px;
+      height: 22px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .step-text { color: var(--text); }
+    .step-text strong { color: var(--accent2); }
+
+    /* 按钮组 */
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      justify-content: center;
+    }
+    button {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.55rem 1.2rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    button:hover { border-color: var(--accent); color: var(--accent); }
+    button.primary {
+      background: linear-gradient(135deg, #047857 0%, #059669 100%);
+      border: none;
+      color: #fff;
+    }
+    button.primary:hover { filter: brightness(1.1); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-reset {
+      background: var(--surface);
+      border: 1px solid var(--error);
+      color: var(--error);
+    }
+    .btn-reset:hover { background: var(--error); color: #fff; }
+
+    /* 网络拓扑 */
+    .network-topo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 1rem 0;
+      flex-wrap: wrap;
+    }
+    .host {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      text-align: center;
+      min-width: 80px;
+    }
+    .host-title { font-size: 0.8rem; font-weight: 600; color: var(--accent); }
+    .host-ip { font-size: 0.7rem; color: var(--muted); font-family: monospace; }
+    .router {
+      background: var(--card);
+      border: 2px solid var(--warning);
+      border-radius: 10px;
+      padding: 0.75rem 1.5rem;
+      text-align: center;
+    }
+    .router-title { font-size: 0.8rem; font-weight: 600; color: var(--warning); }
+    .router-mtu { font-size: 0.7rem; color: var(--muted); }
+    .arrow-line {
+      width: 60px;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--warning));
+      position: relative;
+    }
+    .arrow-line::after {
+      content: '▶';
+      position: absolute;
+      right: -8px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--warning);
+      font-size: 0.7rem;
+    }
+
+    /* 隐藏/显示 */
+    .hidden { display: none; }
+
+    /* 分片表 */
+    .frag-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      margin-top: 0.75rem;
+    }
+    .frag-table th, .frag-table td {
+      padding: 0.45rem 0.6rem;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+    .frag-table th { background: var(--surface); color: var(--muted); }
+    .frag-table td { font-family: monospace; }
+    .frag-table .mf-1 { color: var(--error); font-weight: 700; }
+    .frag-table .mf-0 { color: var(--accent); font-weight: 700; }
+
+    /* 总结框 */
+    .summary-box {
+      background: linear-gradient(135deg, rgba(5, 150, 105, 0.15), rgba(16, 185, 129, 0.1));
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      padding: 1rem;
+      margin-top: 1rem;
+      font-size: 0.85rem;
+    }
+    .summary-box h4 { color: var(--accent2); margin-bottom: 0.5rem; font-size: 0.9rem; }
+    .summary-box p { color: var(--text); margin-bottom: 0.25rem; }
+    .summary-box p:last-child { margin-bottom: 0; }
+    .summary-box strong { color: var(--accent2); }
+
+    /* 题目和解答 */
+    .question-text {
+      font-size: 0.88rem;
+      line-height: 1.8;
+      color: var(--text);
+      padding: 0.75rem;
+      background: var(--surface);
+      border-radius: 8px;
+      border-left: 3px solid var(--accent);
+    }
+    .solution-box {
+      font-size: 0.82rem;
+      line-height: 1.8;
+      color: var(--text);
+      padding: 0.75rem;
+      background: var(--surface);
+      border-radius: 8px;
+    }
+    .solution-box p { margin-bottom: 0.25rem; }
+    .solution-box p:last-child { margin-bottom: 0; }
+    .solution-box strong { color: var(--accent2); }
+  </style>
+</head>
+<body>
+  <h1>IP 分片与 TCP 报文讲解动画</h1>
+  <p class="subtitle">计算机网络 · IP 分片原理与 TCP 报文封装</p>
+
+  <!-- 题目切换 -->
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('q5')">题目5 · IP数据报分片</button>
+    <button class="tab-btn" onclick="switchTab('q6')">题目6 · TCP报文分片</button>
+  </div>
+
+  <!-- ========== 题目5：IP数据报分片 ========== -->
+  <div id="panel-q5">
+    <!-- 题目原文 -->
+    <div class="panel">
+      <div class="panel-title"><span class="num">5</span>原题</div>
+      <div class="question-text">
+        一个数据报长度为4000字节（固定首部长度）。现在经过一个网络传送，但此网络能够传送的最大数据长度为1500字节。试问应当划分为几个短些的数据报片？各数据报片的数据字段长度、片偏移字段和MF标志应为何数值？
+      </div>
+    </div>
+
+    <!-- 文字解答 -->
+    <div class="panel">
+      <div class="panel-title"><span class="num">5</span>解答</div>
+      <div class="solution-box">
+        <p><strong>【分析】</strong></p>
+        <p>• IP数据报固定首部长度为 <strong>20字节</strong></p>
+        <p>• 网络MTU = 1500字节，因此每片数据长度 ≤ 1500 - 20 = <strong>1480字节</strong></p>
+        <p>• 原始数据部分 = 4000 - 20 = <strong>3980字节</strong></p>
+        <p>• 分片数量 = ⌈3980 ÷ 1480⌉ = ⌈2.69⌉ = <strong>3片</strong></p>
+        <br/>
+        <p><strong>【分片结果】</strong></p>
+        <p>片1：总长1500B，数据1480B，MF=1，偏移=0</p>
+        <p>片2：总长1500B，数据1480B，MF=1，偏移=1480÷8=<strong>185</strong></p>
+        <p>片3：总长1040B，数据1020B，MF=0，偏移=2960÷8=<strong>370</strong></p>
+        <br/>
+        <p><strong>【验证】</strong></p>
+        <p>片1数据：字节0~1479</p>
+        <p>片2数据：字节1480~2959，偏移=185✓</p>
+        <p>片3数据：字节2960~3979，偏移=370✓</p>
+      </div>
+    </div>
+
+    <!-- 动画演示 -->
+    <div class="panel">
+      <div class="panel-title"><span class="num">5</span>动画演示</div>
+      <div class="algo-desc" style="margin-top:0; border-left-color: var(--header-ip);">
+        <strong>已知条件：</strong>原始数据报长度 = 4000字节，固定IP首部 = 20字节，网络MTU = 1500字节
+      </div>
+
+      <!-- 动画舞台 -->
+      <div class="stage" id="stage-q5">
+        <!-- 原始报文 -->
+        <div class="packet-container" id="origin-q5">
+          <div class="packet-row">
+            <span class="packet-label">原始数据报</span>
+            <div class="packet" id="origin-packet-5">
+              <div class="packet-header packet-ip">IP首部<br>20B</div>
+              <div class="packet-body packet-data" id="origin-data-5">数据部分 3980B</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="arrow-down hidden" id="arrow1-q5">⬇ 分片</div>
+
+        <!-- 分片结果 -->
+        <div class="fragment-result hidden" id="frags-q5">
+          <div class="fragment-row">
+            <span class="fragment-label">片1 (1500B)</span>
+            <div class="fragment-bar ip-header" id="frag1-bar-5" style="width: 0;">IP首部 20B</div>
+            <div class="fragment-bar data" id="frag1-data-5" style="width: 0;">数据 1480B</div>
+            <span class="fragment-info">MF=1, 偏移=0</span>
+          </div>
+          <div class="fragment-row">
+            <span class="fragment-label">片2 (1500B)</span>
+            <div class="fragment-bar ip-header" id="frag2-bar-5" style="width: 0;">IP首部 20B</div>
+            <div class="fragment-bar data" id="frag2-data-5" style="width: 0;">数据 1480B</div>
+            <span class="fragment-info">MF=1, 偏移=185</span>
+          </div>
+          <div class="fragment-row">
+            <span class="fragment-label">片3 (1040B)</span>
+            <div class="fragment-bar ip-header" id="frag3-bar-5" style="width: 0;">IP首部 20B</div>
+            <div class="fragment-bar data end" id="frag3-data-5" style="width: 0;">数据 1020B</div>
+            <span class="fragment-info">MF=0, 偏移=370</span>
+          </div>
+        </div>
+
+        <!-- 步骤说明 -->
+        <div class="step-list" id="steps-q5">
+          <div class="step-item" id="step1-q5"><span class="step-num">1</span><span class="step-text">计算每片数据长度：MTU - IP首部 = <strong>1500 - 20 = 1480 字节</strong></span></div>
+          <div class="step-item" id="step2-q5"><span class="step-num">2</span><span class="step-text">计算分片数量：⌈3980 / 1480⌉ = <strong>3 片</strong></span></div>
+          <div class="step-item" id="step3-q5"><span class="step-num">3</span><span class="step-text">片1：数据 0~1479，MF=1，偏移=<strong>0÷8=0</strong></span></div>
+          <div class="step-item" id="step4-q5"><span class="step-num">4</span><span class="step-text">片2：数据 1480~2959，MF=1，偏移=<strong>1480÷8=185</strong></span></div>
+          <div class="step-item" id="step5-q5"><span class="step-num">5</span><span class="step-text">片3：数据 2960~3979，MF=0，偏移=<strong>2960÷8=370</strong></span></div>
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button id="btn-prev-q5" onclick="prevStepQ5()">← 上一步</button>
+        <button class="primary" id="btn-next-q5" onclick="nextStepQ5()">下一步 →</button>
+        <button class="btn-reset" onclick="resetQ5()">重置</button>
+      </div>
+    </div>
+
+    <!-- 分片表格 -->
+    <div class="panel hidden" id="table-panel-q5">
+      <div class="panel-title">分片数据报片</div>
+      <table class="frag-table">
+        <thead>
+          <tr>
+            <th>分片</th>
+            <th>总长度</th>
+            <th>数据长度</th>
+            <th>MF标志</th>
+            <th>片偏移</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>原始</td><td>4000B</td><td>3980B</td><td class="mf-0">0</td><td>0</td></tr>
+          <tr><td>片1</td><td>1500B</td><td>1480B</td><td class="mf-1">1</td><td>0</td></tr>
+          <tr><td>片2</td><td>1500B</td><td>1480B</td><td class="mf-1">1</td><td>185</td></tr>
+          <tr><td>片3</td><td>1040B</td><td>1020B</td><td class="mf-0">0</td><td>370</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 总结 -->
+    <div class="panel hidden" id="summary-q5">
+      <div class="summary-box">
+        <h4>解题要点</h4>
+        <p>• 每片数据长度 = MTU - IP首部（固定20字节）</p>
+        <p>• 分片数量 = ⌈原始数据 / 每片数据⌉</p>
+        <p>• 片偏移以 <strong>8字节</strong> 为单位</p>
+        <p>• MF=1 表示"还有更多分片"，MF=0 表示"最后一个分片"</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 题目6：TCP报文分片 ========== -->
+  <div id="panel-q6" class="hidden">
+    <!-- 题目原文 -->
+    <div class="panel">
+      <div class="panel-title"><span class="num">6</span>原题</div>
+      <div class="question-text">
+        一个3200bit长的TCP报文传到IP层，加上160bit的首部后成为数据报。下面的互联网由两个局域网通过路由器连接起来。但第二个局域网所能传送的最长数据帧中的数据部分只有1200bit，因此数据报在路由器必须进行分片。试问第二个局域网向其上层要传送多少比特的数据（这里的"数据"当然指局域网看见的数据）？
+      </div>
+    </div>
+
+    <!-- 文字解答 -->
+    <div class="panel">
+      <div class="panel-title"><span class="num">6</span>解答</div>
+      <div class="solution-box">
+        <p><strong>【分析】</strong></p>
+        <p>• TCP报文 = 3200bit，IP首部 = 160bit</p>
+        <p>• 第二个局域网MTU = 1200bit（含IP首部）</p>
+        <p>• 每片IP数据部分 ≤ 1200 - 160 = <strong>1040bit</strong></p>
+        <p>• 片偏移以<strong>8字节(64bit)</strong>为单位，所以每片数据部分最大取<strong>1024bit</strong></p>
+        <p>• 分片数量 = ⌈3200 ÷ 1024⌉ = ⌈3.125⌉ = <strong>4片</strong></p>
+        <br/>
+        <p><strong>【关键理解】</strong></p>
+        <p>• "向下传送"：主机→路由器</p>
+        <p>• "向上传送"：路由器→目标主机</p>
+        <p>• 每经过一个分片，都需要加上新的IP首部</p>
+        <br/>
+        <p><strong>【计算结果】</strong></p>
+        <p>第二个局域网向上传送 = TCP数据 + 4 × IP首部</p>
+        <p>= 3200 + 4 × 160 = <strong>3840bit</strong></p>
+      </div>
+    </div>
+
+    <!-- 动画演示 -->
+    <div class="panel">
+      <div class="panel-title"><span class="num">6</span>动画演示</div>
+      <div class="algo-desc" style="margin-top:0; border-left-color: var(--tcp);">
+        <strong>已知条件：</strong>TCP报文 = 3200bit，IP首部 = 160bit，局域网MTU = 1200bit
+      </div>
+
+      <!-- 网络拓扑 -->
+      <div class="network-topo">
+        <div class="host">
+          <div class="host-title">主机 A</div>
+          <div class="host-ip">192.168.1.1</div>
+        </div>
+        <div class="arrow-line"></div>
+        <div class="router">
+          <div class="router-title">路由器</div>
+          <div class="router-mtu">MTU = 1200 bit</div>
+        </div>
+        <div class="arrow-line" style="background: linear-gradient(90deg, var(--warning), var(--accent));"></div>
+        <div class="host">
+          <div class="host-title">主机 B</div>
+          <div class="host-ip">192.168.2.1</div>
+        </div>
+      </div>
+
+      <!-- 动画舞台 -->
+      <div class="stage" id="stage-q6">
+        <!-- 原始TCP报文 -->
+        <div class="packet-container" id="origin-q6">
+          <div class="packet-row">
+            <span class="packet-label">TCP报文</span>
+            <div class="packet" id="tcp-packet-6">
+              <div class="packet-header packet-tcp">TCP首部<br>160bit</div>
+              <div class="packet-body packet-data" id="tcp-data-6">数据部分 3200bit</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="arrow-down hidden" id="arrow1-q6">⬇ 封装为IP数据报</div>
+
+        <!-- IP数据报 -->
+        <div class="packet-container hidden" id="ip-encap-q6">
+          <div class="packet-row">
+            <span class="packet-label">IP数据报</span>
+            <div class="packet" id="ip-packet-6">
+              <div class="packet-header packet-ip">IP首部<br>160bit</div>
+              <div class="packet-body packet-tcp" id="ip-tcp-6">TCP首部+数据 3360bit</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="arrow-down hidden" id="arrow2-q6">⬇ 分片（MTU=1200）</div>
+
+        <!-- 分片结果 -->
+        <div class="fragment-result hidden" id="frags-q6">
+          <div class="fragment-row">
+            <span class="fragment-label">片1</span>
+            <div class="fragment-bar ip-header" id="q6-f1-ip" style="width:0;">IP 160bit</div>
+            <div class="fragment-bar tcp-header" id="q6-f1-tcp" style="width:0;">TCP+数据</div>
+            <span class="fragment-info">数据 ≤1024bit</span>
+          </div>
+          <div class="fragment-row">
+            <span class="fragment-label">片2</span>
+            <div class="fragment-bar ip-header" id="q6-f2-ip" style="width:0;">IP 160bit</div>
+            <div class="fragment-bar tcp-header end" id="q6-f2-tcp" style="width:0;">TCP+数据</div>
+            <span class="fragment-info">MF=0</span>
+          </div>
+        </div>
+
+        <!-- 步骤说明 -->
+        <div class="step-list" id="steps-q6">
+          <div class="step-item" id="q6-step1"><span class="step-num">1</span><span class="step-text">TCP报文加上IP首部：3200 + 160 = <strong>3360 bit</strong></span></div>
+          <div class="step-item" id="q6-step2"><span class="step-num">2</span><span class="step-text">每片数据最大 = MTU - IP首部 = <strong>1200 - 160 = 1040 bit</strong></span></div>
+          <div class="step-item" id="q6-step3"><span class="step-num">3</span><span class="step-text">片偏移以 <strong>8字节(64bit)</strong> 为单位，因此每片数据最大取 <strong>1024 bit</strong></span></div>
+          <div class="step-item" id="q6-step4"><span class="step-num">4</span><span class="step-text">分片数量 = ⌈3200 / 1024⌉ = <strong>4 片</strong></span></div>
+          <div class="step-item" id="q6-step5"><span class="step-num">5</span><span class="step-text">第二个局域网向上传送：3200 + 4×160 = <strong>3840 bit</strong></span></div>
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button id="btn-prev-q6" onclick="prevStepQ6()">← 上一步</button>
+        <button class="primary" id="btn-next-q6" onclick="nextStepQ6()">下一步 →</button>
+        <button class="btn-reset" onclick="resetQ6()">重置</button>
+      </div>
+    </div>
+
+    <!-- 详细计算表 -->
+    <div class="panel hidden" id="table-panel-q6">
+      <div class="panel-title">分片计算明细</div>
+      <table class="frag-table">
+        <thead>
+          <tr>
+            <th>IP片</th>
+            <th>IP首部</th>
+            <th>TCP首部+数据</th>
+            <th>每片数据</th>
+            <th>累计TCP数据</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>片1</td><td>160bit</td><td>160bit</td><td>1024bit</td><td>1024bit</td></tr>
+          <tr><td>片2</td><td>160bit</td><td>160bit</td><td>1024bit</td><td>2048bit</td></tr>
+          <tr><td>片3</td><td>160bit</td><td>160bit</td><td>1024bit</td><td>3072bit</td></tr>
+          <tr><td>片4</td><td>160bit</td><td>160bit</td><td>128bit</td><td>3200bit</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:0.75rem; padding:0.75rem; background:var(--surface); border-radius:8px; font-size:0.82rem;">
+        <strong style="color:var(--accent2);">最终答案：</strong>第二个局域网向上传送 <strong>3200 + 4×160 = 3840 bit</strong>
+      </div>
+    </div>
+
+    <!-- 总结 -->
+    <div class="panel hidden" id="summary-q6">
+      <div class="summary-box">
+        <h4>解题要点</h4>
+        <p>• 题目中"向下传送"指从主机到路由器，"向上传送"指从路由器到目标主机</p>
+        <p>• 片偏移必须为 8字节(64bit) 的倍数，因此每片数据最大取 <strong>1024 bit</strong></p>
+        <p>• 分片数量 = ⌈TCP数据 / 每片数据⌉，每个分片都带独立的 IP 首部</p>
+        <p>• 最终传送总量 = TCP数据 + 分片数 × IP首部</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== Tab 切换 =====
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('panel-q5').classList.add('hidden');
+      document.getElementById('panel-q6').classList.add('hidden');
+      if (tab === 'q5') {
+        document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+        document.getElementById('panel-q5').classList.remove('hidden');
+      } else {
+        document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+        document.getElementById('panel-q6').classList.remove('hidden');
+      }
+    }
+
+    // ===== 题目5 逐步动画 =====
+    // 步骤说明配置
+    const q5Steps = [
+      { id: 'step1-q5', text: '计算每片数据长度：MTU - IP首部 = <strong>1500 - 20 = 1480 字节</strong>' },
+      { id: 'step2-q5', text: '计算分片数量：⌈3980 / 1480⌉ = <strong>3 片</strong>' },
+      { id: 'step3-q5', text: '片1：数据 0~1479，MF=1，偏移=<strong>0÷8=0</strong>' },
+      { id: 'step4-q5', text: '片2：数据 1480~2959，MF=1，偏移=<strong>1480÷8=185</strong>' },
+      { id: 'step5-q5', text: '片3：数据 2960~3979，MF=0，偏移=<strong>2960÷8=370</strong>' },
+    ];
+    let q5Step = -1;
+
+    // 分片元素配置
+    const q5Frags = [
+      { ipId: 'frag1-bar-5', dataId: 'frag1-data-5', ipW: 60, dataW: 320 },
+      { ipId: 'frag2-bar-5', dataId: 'frag2-data-5', ipW: 60, dataW: 320 },
+      { ipId: 'frag3-bar-5', dataId: 'frag3-data-5', ipW: 60, dataW: 220 },
+    ];
+    let q5FragStep = -1;
+
+    function nextStepQ5() {
+      q5Step++;
+      updateQ5UI();
+
+      // 步骤5之后：显示表格和总结
+      if (q5Step === 5) {
+        document.getElementById('table-panel-q5').classList.remove('hidden');
+        document.getElementById('summary-q5').classList.remove('hidden');
+        document.getElementById('btn-next-q5').disabled = true;
+        document.getElementById('btn-next-q5').textContent = '已完成';
+      }
+    }
+
+    function prevStepQ5() {
+      // 先隐藏表格和总结
+      if (q5Step === 5) {
+        document.getElementById('table-panel-q5').classList.add('hidden');
+        document.getElementById('summary-q5').classList.add('hidden');
+        document.getElementById('btn-next-q5').disabled = false;
+        document.getElementById('btn-next-q5').textContent = '下一步 →';
+      }
+
+      if (q5Step >= 0) {
+        // 清除当前步骤
+        document.getElementById(q5Steps[q5Step].id).classList.remove('show');
+        q5Step--;
+      }
+
+      if (q5Step < q5Steps.length - 1) {
+        // 隐藏多余的分片
+        if (q5Step < 2) {
+          document.getElementById('frag3-bar-5').style.width = '0';
+          document.getElementById('frag3-data-5').style.width = '0';
+        }
+        if (q5Step < 1) {
+          document.getElementById('frag2-bar-5').style.width = '0';
+          document.getElementById('frag2-data-5').style.width = '0';
+        }
+        if (q5Step < 0) {
+          document.getElementById('frag1-bar-5').style.width = '0';
+          document.getElementById('frag1-data-5').style.width = '0';
+          document.getElementById('arrow1-q5').classList.add('hidden');
+          document.getElementById('frags-q5').classList.add('hidden');
+        }
+      }
+
+      if (q5Step >= 0) {
+        document.getElementById(q5Steps[q5Step].id).classList.add('show');
+      }
+    }
+
+    function updateQ5UI() {
+      // 步骤1-5：显示文字说明
+      if (q5Step >= 0 && q5Step < q5Steps.length) {
+        const el = document.getElementById(q5Steps[q5Step].id);
+        el.querySelector('.step-text').innerHTML = q5Steps[q5Step].text;
+        el.classList.add('show');
+      }
+
+      // 步骤2之后：显示分片箭头
+      if (q5Step >= 1) {
+        document.getElementById('arrow1-q5').classList.remove('hidden');
+        document.getElementById('frags-q5').classList.remove('hidden');
+      }
+
+      // 步骤2之后：分片1
+      if (q5Step >= 2) {
+        document.getElementById(q5Frags[0].ipId).style.width = q5Frags[0].ipW + 'px';
+        document.getElementById(q5Frags[0].dataId).style.width = q5Frags[0].dataW + 'px';
+      }
+
+      // 步骤3：分片2
+      if (q5Step >= 3) {
+        document.getElementById(q5Frags[1].ipId).style.width = q5Frags[1].ipW + 'px';
+        document.getElementById(q5Frags[1].dataId).style.width = q5Frags[1].dataW + 'px';
+      }
+
+      // 步骤4：分片3
+      if (q5Step >= 4) {
+        document.getElementById(q5Frags[2].ipId).style.width = q5Frags[2].ipW + 'px';
+        document.getElementById(q5Frags[2].dataId).style.width = q5Frags[2].dataW + 'px';
+      }
+    }
+
+    function resetQ5() {
+      q5Step = -1;
+      q5FragStep = -1;
+      q5Steps.forEach(s => document.getElementById(s.id).classList.remove('show'));
+      document.getElementById('arrow1-q5').classList.add('hidden');
+      document.getElementById('frags-q5').classList.add('hidden');
+      q5Frags.forEach(f => {
+        document.getElementById(f.ipId).style.width = '0';
+        document.getElementById(f.dataId).style.width = '0';
+      });
+      document.getElementById('table-panel-q5').classList.add('hidden');
+      document.getElementById('summary-q5').classList.add('hidden');
+      document.getElementById('btn-next-q5').disabled = false;
+      document.getElementById('btn-next-q5').textContent = '下一步 →';
+    }
+
+    // ===== 题目6 逐步动画 =====
+    const q6Steps = [
+      { id: 'q6-step1', text: 'TCP报文加上IP首部：3200 + 160 = <strong>3360 bit</strong>' },
+      { id: 'q6-step2', text: '每片数据最大 = MTU - IP首部 = <strong>1200 - 160 = 1040 bit</strong>' },
+      { id: 'q6-step3', text: '片偏移以 <strong>8字节(64bit)</strong> 为单位，因此每片数据最大取 <strong>1024 bit</strong>' },
+      { id: 'q6-step4', text: '分片数量 = ⌈3200 / 1024⌉ = <strong>4 片</strong>' },
+      { id: 'q6-step5', text: '第二个局域网向上传送：3200 + 4×160 = <strong>3840 bit</strong>' },
+    ];
+    let q6Step = -1;
+    let q6Phase = 0; // 0=TCP原始, 1=IP封装, 2=分片
+
+    function nextStepQ6() {
+      q6Step++;
+      updateQ6UI();
+
+      // 步骤5之后：显示表格和总结
+      if (q6Step === 5) {
+        document.getElementById('table-panel-q6').classList.remove('hidden');
+        document.getElementById('summary-q6').classList.remove('hidden');
+        document.getElementById('btn-next-q6').disabled = true;
+        document.getElementById('btn-next-q6').textContent = '已完成';
+      }
+    }
+
+    function prevStepQ6() {
+      // 先隐藏表格和总结
+      if (q6Step === 5) {
+        document.getElementById('table-panel-q6').classList.add('hidden');
+        document.getElementById('summary-q6').classList.add('hidden');
+        document.getElementById('btn-next-q6').disabled = false;
+        document.getElementById('btn-next-q6').textContent = '下一步 →';
+      }
+
+      if (q6Step >= 0) {
+        document.getElementById(q6Steps[q6Step].id).classList.remove('show');
+        q6Step--;
+      }
+
+      if (q6Step < q6Steps.length - 1) {
+        // 隐藏多余的分片
+        if (q6Step < 3) {
+          document.getElementById('q6-f2-ip').style.width = '0';
+          document.getElementById('q6-f2-tcp').style.width = '0';
+        }
+        if (q6Step < 2) {
+          document.getElementById('q6-f1-ip').style.width = '0';
+          document.getElementById('q6-f1-tcp').style.width = '0';
+          document.getElementById('arrow2-q6').classList.add('hidden');
+          document.getElementById('frags-q6').classList.add('hidden');
+        }
+        if (q6Step < 1) {
+          document.getElementById('arrow1-q6').classList.add('hidden');
+          document.getElementById('ip-encap-q6').classList.add('hidden');
+          document.getElementById('tcp-packet-6').style.opacity = '1';
+        }
+      }
+
+      if (q6Step >= 0) {
+        document.getElementById(q6Steps[q6Step].id).classList.add('show');
+      }
+    }
+
+    function updateQ6UI() {
+      // 显示步骤文字
+      if (q6Step >= 0 && q6Step < q6Steps.length) {
+        const el = document.getElementById(q6Steps[q6Step].id);
+        el.querySelector('.step-text').innerHTML = q6Steps[q6Step].text;
+        el.classList.add('show');
+      }
+
+      // 步骤1后：显示"封装为IP数据报"箭头
+      if (q6Step >= 1) {
+        document.getElementById('arrow1-q6').classList.remove('hidden');
+        document.getElementById('ip-encap-q6').classList.remove('hidden');
+        document.getElementById('tcp-packet-6').style.opacity = '0.5';
+      }
+
+      // 步骤2后：显示"分片"箭头
+      if (q6Step >= 2) {
+        document.getElementById('arrow2-q6').classList.remove('hidden');
+        document.getElementById('frags-q6').classList.remove('hidden');
+      }
+
+      // 步骤3后：显示分片1
+      if (q6Step >= 3) {
+        document.getElementById('q6-f1-ip').style.width = '50px';
+        document.getElementById('q6-f1-tcp').style.width = '200px';
+      }
+
+      // 步骤4后：显示分片2
+      if (q6Step >= 4) {
+        document.getElementById('q6-f2-ip').style.width = '50px';
+        document.getElementById('q6-f2-tcp').style.width = '280px';
+      }
+    }
+
+    function resetQ6() {
+      q6Step = -1;
+      q6Phase = 0;
+      q6Steps.forEach(s => document.getElementById(s.id).classList.remove('show'));
+      document.getElementById('arrow1-q6').classList.add('hidden');
+      document.getElementById('arrow2-q6').classList.add('hidden');
+      document.getElementById('ip-encap-q6').classList.add('hidden');
+      document.getElementById('frags-q6').classList.add('hidden');
+      document.getElementById('tcp-packet-6').style.opacity = '1';
+      ['q6-f1-ip','q6-f2-ip'].forEach(id => document.getElementById(id).style.width = '0');
+      ['q6-f1-tcp','q6-f2-tcp'].forEach(id => document.getElementById(id).style.width = '0');
+      document.getElementById('table-panel-q6').classList.add('hidden');
+      document.getElementById('summary-q6').classList.add('hidden');
+      document.getElementById('btn-next-q6').disabled = false;
+      document.getElementById('btn-next-q6').textContent = '下一步 →';
+    }
+
+    // ===== AI 问答功能 =====
+    let aiMessages = [];
+    let aiLoading = false;
+
+    function toggleAiPanel() {
+      document.getElementById('aiPanel').classList.toggle('open');
+    }
+
+    function addAiMessage(role, content, loading = false) {
+      const container = document.getElementById('aiMessages');
+      const div = document.createElement('div');
+      div.className = 'ai-msg ' + role + (loading ? ' loading' : '');
+      div.textContent = loading ? '正在思考...' : content;
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    async function sendAiMessage() {
+      const input = document.getElementById('aiInput');
+      const text = input.value.trim();
+      if (!text || aiLoading) return;
+
+      addAiMessage('user', text);
+      aiMessages.push({ role: 'user', content: text });
+      input.value = '';
+
+      aiLoading = true;
+      addAiMessage('ai', '', true);
+
+      try {
+        const context = buildIpContext() + '\n\n用户问题：' + text;
+        const answer = await callAI(context);
+        document.querySelectorAll('.ai-msg.ai.loading').forEach(m => m.remove());
+        addAiMessage('ai', answer);
+        aiMessages.push({ role: 'ai', content: answer });
+      } catch (e) {
+        document.querySelectorAll('.ai-msg.ai.loading').forEach(m => m.remove());
+        addAiMessage('ai', '抱歉：' + e.message);
+      }
+
+      aiLoading = false;
+    }
+
+    function buildIpContext() {
+      return `【当前页面主题】IP 分片与 TCP 报文讲解
+
+【知识点概要】
+1. IP 数据报分片
+   - IP首部固定20字节
+   - 每片数据长度 = MTU - IP首部
+   - 片偏移以8字节为单位
+   - MF=1表示"还有分片"，MF=0表示"最后分片"
+
+2. TCP 报文封装
+   - TCP报文传到IP层需加IP首部
+   - 分片后每个分片都有独立IP首部
+   - "向上传送"总量 = 原始数据 + 分片数×IP首部
+
+【题目信息】
+本页面包含两道题目：
+- 题目5：4000字节数据报，MTU=1500字节的分片计算
+- 题目6：3200bit TCP报文经MTU=1200bit网络分片的计算`;
+    }
+
+    async function callAI(prompt) {
+      try {
+        const configRes = await fetch('/api/ai/config');
+        let config = {};
+        if (configRes.ok) config = await configRes.json();
+        if (!config.apiKey) throw new Error('AI API 未配置');
+
+        const res = await fetch('/api/ai/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: [{ role: 'user', content: prompt }], model: config.model || 'gpt-3.5-turbo' })
+        });
+        if (!res.ok) throw new Error('API 请求失败');
+        return (await res.json()).choices[0].message.content;
+      } catch (e) {
+        throw new Error(e.message || 'AI 服务不可用');
+      }
+    }
+
+    function handleAiKeyDown(e) {
+      if (e.key === 'Enter') { e.preventDefault(); sendAiMessage(); }
+    }
+  </script>
+
+<!-- AI 悬浮按钮 -->
+<button class="ai-float-btn" onclick="toggleAiPanel()">
+  <svg width="20" height="20" viewBox="0 0 1024 1024">
+    <path d="M122.281 287v450L317.15 624.5v-225z" fill="#0423DB"/>
+    <path d="M317.15 399.5v225L512 512z" fill="#1C54E4"/>
+    <path d="M512 512L317.15 399.5l389.625-225.131L901.719 287z" fill="#AB9BFF"/>
+    <path d="M317.15 399.5L122.281 287 512 62l194.775 112.369z" fill="#7347FF"/>
+    <path d="M901.719 737L512 962 317.15 849.5l389.7-225z" fill="#00CFCA"/>
+    <path d="M706.85 624.5L901.719 512v225z m-389.7 225L122.281 737 512 512l194.85 112.5z" fill="#00EBD2"/>
+  </svg>
+  <span>AI 答疑</span>
+</button>
+
+<!-- AI 面板 -->
+<div class="ai-panel" id="aiPanel">
+  <div class="ai-panel-header">
+    <span>AI 助手</span>
+    <button class="ai-close" onclick="toggleAiPanel()">×</button>
+  </div>
+  <div class="ai-messages" id="aiMessages">
+    <div class="ai-welcome">
+      <p>你好！我是 AI 刷题助手。</p>
+      <p>当前页面讲解的是 <strong>IP 分片与 TCP 报文</strong>，包括数据报分片原理和 TCP 报文封装分片过程。</p>
+      <p>你可以问我任何相关问题，比如：</p>
+      <ul>
+        <li>什么是 IP 分片？</li>
+        <li>片偏移为什么以8字节为单位？</li>
+        <li>TCP 报文分片和 IP 分片的区别？</li>
+      </ul>
+    </div>
+  </div>
+  <div class="ai-input-area">
+    <input type="text" id="aiInput" placeholder="输入问题，按 Enter 发送..." onkeydown="handleAiKeyDown(event)" />
+    <button onclick="sendAiMessage()">发送</button>
+  </div>
+</div>
+
+</body>
+</html>

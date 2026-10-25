@@ -10,6 +10,7 @@ dist-ssr/
 .npm
 .eslintcache
 .vite/
+.vercel
 server/data/*.db
 server/data/auth-secret
 
@@ -24,3 +25,6 @@ docs/superpowers/
 # Temp files
 *.tmp
 *.bak
+
+.env*
+!.env.demo

@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARP 协议工作过程动画演示</title>
+  <style>
+    :root {
+      --bg: #0d0e1a;
+      --surface: #161628;
+      --card: #1a1a2e;
+      --text: #e8e8f0;
+      --muted: #9898b0;
+      --accent: #7c8dbd;
+      --accent2: #6b8cce;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --error: #f43f5e;
+      --border: rgba(255,255,255,0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'SimSun', 'STSong', serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 1.5rem;
+      min-height: 100vh;
+    }
+    h1 { text-align: center; margin-bottom: 0.2rem; font-size: 1.5rem; }
+    .subtitle { text-align: center; color: var(--muted); margin-bottom: 1.25rem; font-size: 0.9rem; }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      justify-content: center;
+    }
+    button {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.55rem 1.2rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    button:hover { border-color: var(--accent); color: var(--accent); }
+    button.primary {
+      background: linear-gradient(135deg, #5a6fa0 0%, #6b8cce 100%);
+      border: none;
+      color: #fff;
+    }
+    button.primary:hover { filter: brightness(1.1); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.success {
+      background: linear-gradient(135deg, #15803d 0%, #22c55e 100%);
+      border: none;
+      color: #fff;
+    }
+    button.success:hover { filter: brightness(1.1); }
+    .algo-desc {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin: 0.75rem 0 0.25rem;
+      padding: 0.75rem;
+      background: var(--surface);
+      border-radius: 8px;
+      border-left: 3px solid var(--accent);
+    }
+    .canvas-wrap {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      min-height: 480px;
+      margin-bottom: 1rem;
+    }
+    canvas { display: block; width: 100%; height: 480px; }
+    .step-desc {
+      margin: 0.5rem 0;
+      font-size: 0.95rem;
+      color: var(--text);
+      background: rgba(108, 140, 206, 0.1);
+      border-left: 3px solid var(--accent2);
+      padding: 0.85rem 1rem;
+      border-radius: 8px;
+      line-height: 1.7;
+      min-height: 3.5rem;
+      transition: all 0.2s ease;
+    }
+    .step-desc .highlight { color: var(--success); font-weight: bold; }
+    .step-desc .warn { color: var(--warning); font-weight: bold; }
+    .step-desc .accent { color: var(--accent2); font-weight: bold; }
+    .explanation {
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--text);
+      background: rgba(34,197,94,0.08);
+      border-left: 3px solid var(--success);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      line-height: 1.6;
+    }
+    .explanation h4 { color: var(--success); margin-bottom: 0.5rem; font-size: 0.9rem; }
+    .explanation ol { margin-left: 1.2rem; color: var(--muted); }
+    .explanation li { margin-bottom: 0.25rem; }
+    .step-desc .green { color: var(--success); font-weight: bold; }
+    .step-desc .ac { color: var(--accent2); font-weight: bold; }
+    .cache-panel {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin: 0.75rem 0;
+    }
+    .cache-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem;
+    }
+    .cache-box h4 {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+      text-align: center;
+    }
+    .cache-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    .cache-table th {
+      color: var(--muted);
+      font-weight: normal;
+      padding: 0.25rem 0.5rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .cache-table td {
+      padding: 0.25rem 0.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .cache-table .entry-new {
+      color: var(--success);
+      font-weight: bold;
+      animation: pulse-green 1s ease infinite;
+    }
+    .cache-table .entry-miss {
+      color: var(--error);
+    }
+    @keyframes pulse-green {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+    }
+    .legend span { display: flex; align-items: center; gap: 0.35rem; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .step-indicators {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin: 0.75rem 0;
+    }
+    .step-dot {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: bold;
+      background: var(--surface);
+      border: 2px solid var(--border);
+      color: var(--muted);
+      transition: all 0.3s ease;
+    }
+    .step-dot.active {
+      border-color: var(--accent2);
+      color: var(--accent2);
+      background: rgba(108, 140, 206, 0.15);
+    }
+    .step-dot.done {
+      border-color: var(--success);
+      color: var(--success);
+      background: rgba(34, 197, 94, 0.15);
+    }
+    @media (max-width: 720px) {
+      body { padding: 0.75rem; }
+      canvas { height: 380px; }
+      .cache-panel { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <h1>ARP 协议工作过程动画演示</h1>
+  <p class="subtitle">主机1 (192.168.25.1 / E1) -> 主机2 (192.168.25.2 / E2)，同一子网</p>
+
+  <div class="panel">
+    <div class="btn-group">
+      <button class="primary" onclick="startAnimation()">▶ 开始演示</button>
+      <button class="success" onclick="autoPlay()">▶▶ 完整播放</button>
+      <button onclick="resetAll()">⟲ 重置</button>
+    </div>
+    <div id="algoDesc" class="algo-desc">
+      点击"开始演示"逐步观看 ARP 协议工作流程，或点击"完整播放"一次性观赏整个通信过程。
+    </div>
+  </div>
+
+  <div class="step-indicators" id="stepIndicators">
+    <div class="step-dot" data-step="0">1</div>
+    <div class="step-dot" data-step="1">2</div>
+    <div class="step-dot" data-step="2">3</div>
+    <div class="step-dot" data-step="3">4</div>
+    <div class="step-dot" data-step="4">5</div>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="mainCanvas"></canvas>
+  </div>
+
+  <div class="step-desc" id="stepDesc">
+    准备就绪。点击"开始演示"观察 ARP 协议如何将 IP 地址解析为 MAC 地址。
+  </div>
+
+  <div class="cache-panel">
+    <div class="cache-box">
+      <h4>主机1 ARP 缓存表</h4>
+      <table class="cache-table">
+        <thead><tr><th>IP 地址</th><th>MAC 地址</th></tr></thead>
+        <tbody id="cache1Body">
+          <tr><td colspan="2" style="color:var(--muted);text-align:center;padding:0.5rem">（空）</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="cache-box">
+      <h4>主机2 ARP 缓存表</h4>
+      <table class="cache-table">
+        <thead><tr><th>IP 地址</th><th>MAC 地址</th></tr></thead>
+        <tbody id="cache2Body">
+          <tr><td colspan="2" style="color:var(--muted);text-align:center;padding:0.5rem">（空）</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><span class="dot" style="background:#7c8dbd"></span> 主机1 (192.168.25.1 / E1)</span>
+    <span><span class="dot" style="background:#a78bfa"></span> 主机2 (192.168.25.2 / E2)</span>
+    <span><span class="dot" style="background:#22c55e"></span> ARP 请求 (广播)</span>
+    <span><span class="dot" style="background:#f59e0b"></span> ARP 响应 (单播)</span>
+    <span><span class="dot" style="background:#f43f5e"></span> 数据帧</span>
+  </div>
+
+  <div class="explanation" id="explanation" style="display:none"></div>
+
+  <script>
+    const canvas = document.getElementById('mainCanvas')
+    const ctx = canvas.getContext('2d')
+    let animId = null
+    let currentStep = -1
+    let isPlaying = false
+    let timeoutId = null
+
+    const HOST1 = { x: 0, y: 0, label: '主机1', ip: '192.168.25.1', mac: 'E1', color: '#7c8dbd' }
+    const HOST2 = { x: 0, y: 0, label: '主机2', ip: '192.168.25.2', mac: 'E2', color: '#a78bfa' }
+
+    const steps = [
+      {
+        title: '步骤1：查询 ARP 缓存',
+        desc: '主机1 想要向 主机2（<span class="ac">192.168.25.2</span>）发送数据，<br>首先检查本机 <b>ARP 缓存表</b>中是否有主机2的 MAC 地址。<br><br>▸ 当前缓存中 <span class="warn">未找到</span> 主机2的 MAC 地址（缓存未命中）。',
+        draw: function(progress) { drawTopology(); drawArpQuery(progress); }
+      },
+      {
+        title: '步骤2：广播 ARP 请求',
+        desc: '主机1 构造一个 <b>ARP 请求包</b>，包含：<br>• 发送方 IP 与 MAC：<span class="green">192.168.25.1 / E1</span><br>• 目标 IP（被询问者）：<span class="ac">192.168.25.2</span><br>• 目标 MAC：未知（填 0）<br><br>▸ 将该 ARP 请求 <span class="warn">广播</span> 到整个局域网（FF:FF:FF:FF:FF:FF），<br>  询问"<b>谁的 IP 是 192.168.25.2？请告诉我你的 MAC 地址</b>"',
+        draw: function(progress) { drawTopology(); drawArpBroadcast(progress); }
+      },
+      {
+        title: '步骤3：主机2 回应 ARP 响应',
+        desc: '局域网中所有主机都收到了该广播，但只有 <span class="ac">主机2（192.168.25.2）</span> 匹配目标 IP。<br><br>主机2 向 主机1 发送 <b>ARP 响应包</b>（单播），包含：<br>• 发送方 IP 与 MAC：<span class="green">192.168.25.2 / E2</span><br>• 目标 MAC：<span class="ac">E1</span>（主机1）<br><br>▸ 主机1 收到响应后，从中提取出主机2的 MAC 地址 <b>E2</b>，<br>  并将其存入本机 ARP 缓存表。',
+        draw: function(progress) { drawTopology(); drawArpResponse(progress); }
+      },
+      {
+        title: '步骤4：发送数据帧',
+        desc: '主机1 现在已获得主机2的 MAC 地址 <b>E2</b>。<br><br>▸ 将 <b>E2</b> 填入 MAC 帧的目标地址字段，封装数据，<br>  向主机2发送数据帧。<br><br>主机2 收到数据后，也可将主机1的 IP 与 MAC 地址存入自己的 ARP 缓存，<br>方便后续通信。',
+        draw: function(progress) { drawTopology(); drawDataFrame(progress); }
+      },
+      {
+        title: '步骤5：通信完成',
+        desc: '主机1 -> 主机2 的整个 ARP 解析过程完成。<br><br><b>总结：</b><br>1. 查缓存 -> 未命中<br>2. 广播 ARP 请求 -> "谁的 IP 是 192.168.25.2？"<br>3. 主机2 回复 ARP 响应 -> "我是，我的 MAC 是 E2"<br>4. 主机1 更新缓存，发送数据<br><br>▸ 以后再向主机2发数据时，可直接从 <b>ARP 缓存</b> 中找到 E2，无需再次广播。',
+        draw: function(progress) { drawTopology(); drawDone(); }
+      }
+    ]
+
+    function resize() {
+      const rect = canvas.parentElement.getBoundingClientRect()
+      canvas.width = rect.width * window.devicePixelRatio
+      canvas.height = rect.height * window.devicePixelRatio
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
+
+      const w = canvas.getBoundingClientRect().width
+      const h = canvas.getBoundingClientRect().height
+      HOST1.x = w * 0.2
+      HOST1.y = h * 0.5
+      HOST2.x = w * 0.8
+      HOST2.y = h * 0.5
+
+      if (currentStep >= 0) {
+        steps[currentStep].draw(1)
+      } else {
+        drawTopology()
+      }
+    }
+    window.addEventListener('resize', resize)
+
+    function drawTopology() {
+      const w = canvas.getBoundingClientRect().width
+      const h = canvas.getBoundingClientRect().height
+      ctx.clearRect(0, 0, w, h)
+
+      ctx.fillStyle = 'rgba(124, 141, 189, 0.04)'
+      ctx.strokeStyle = 'rgba(124, 141, 189, 0.12)'
+      ctx.lineWidth = 1
+      const margin = 30
+      roundRect(ctx, margin, margin, w - margin * 2, h - margin * 2, 16)
+      ctx.fill()
+      ctx.stroke()
+
+      ctx.fillStyle = 'rgba(255,255,255,0.1)'
+      ctx.font = '11px "SimSun", "STSong", serif'
+      ctx.textAlign = 'left'
+      ctx.fillText('同一子网（广播域）', margin + 12, margin + 18)
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)'
+      ctx.lineWidth = 2
+      ctx.setLineDash([6, 4])
+      ctx.beginPath()
+      ctx.moveTo(HOST1.x + 50, HOST1.y)
+      ctx.lineTo(HOST2.x - 50, HOST2.y)
+      ctx.stroke()
+      ctx.setLineDash([])
+
+      drawHost(HOST1.x, HOST1.y, HOST1.label, HOST1.ip, HOST1.mac, HOST1.color)
+      drawHost(HOST2.x, HOST2.y, HOST2.label, HOST2.ip, HOST2.mac, HOST2.color)
+    }
+
+    function drawHost(x, y, label, ip, mac, color) {
+      const boxW = 130
+      const boxH = 80
+      const radius = 10
+
+      ctx.fillStyle = 'rgba(22,22,40,0.9)'
+      ctx.strokeStyle = color
+      ctx.lineWidth = 2
+      roundRect(ctx, x - boxW/2, y - boxH/2, boxW, boxH, radius)
+      ctx.fill()
+      ctx.stroke()
+
+      ctx.fillStyle = color
+      roundRect(ctx, x - boxW/2 + 4, y - boxH/2 + 4, boxW - 8, 4, 2)
+      ctx.fill()
+
+      ctx.fillStyle = color
+      ctx.font = '18px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('🖥', x, y - 14)
+
+      ctx.fillStyle = '#e8e8f0'
+      ctx.font = 'bold 12px "SimSun", "STSong", serif'
+      ctx.fillText(label, x, y + 8)
+
+      ctx.fillStyle = color
+      ctx.font = '10px "SimSun", "STSong", serif'
+      ctx.fillText(ip, x, y + 24)
+      ctx.fillText('MAC: ' + mac, x, y + 37)
+    }
+
+    function drawArpQuery(progress) {
+      const w = canvas.getBoundingClientRect().width
+      const x = HOST1.x
+      const y = HOST1.y - 70
+
+      if (progress < 0.5) {
+        const p = progress / 0.5
+        ctx.fillStyle = 'rgba(108, 140, 206, 0.2)'
+        ctx.beginPath()
+        ctx.arc(x, y, 14 + 6 * Math.sin(p * Math.PI), 0, Math.PI * 2)
+        ctx.fill()
+
+        ctx.fillStyle = '#6b8cce'
+        ctx.font = '14px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText('🔍', x, y + 5)
+      } else {
+        const p = (progress - 0.5) / 0.5
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.2)'
+        ctx.beginPath()
+        ctx.arc(x, y, 14 + 6 * Math.sin(p * Math.PI), 0, Math.PI * 2)
+        ctx.fill()
+
+        ctx.fillStyle = '#f59e0b'
+        ctx.font = '12px "SimSun", "STSong", serif'
+        ctx.textAlign = 'center'
+        ctx.fillText('✗ 未命中', x, y + 5)
+      }
+    }
+
+    function drawArpBroadcast(progress) {
+      const w = canvas.getBoundingClientRect().width
+      const h = canvas.getBoundingClientRect().height
+
+      const maxR = Math.sqrt(w * w + h * h) * 0.5
+      const r = 20 + (maxR - 20) * Math.min(1, progress * 1.5)
+
+      ctx.strokeStyle = 'rgba(34, 197, 94, 0.3)'
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.arc(HOST1.x, HOST1.y, r, 0, Math.PI * 2)
+      ctx.stroke()
+
+      if (progress > 0.3) {
+        const r2 = 20 + (maxR - 20) * Math.min(1, (progress - 0.3) * 1.5)
+        ctx.strokeStyle = 'rgba(34, 197, 94, 0.15)'
+        ctx.beginPath()
+        ctx.arc(HOST1.x, HOST1.y, r2, 0, Math.PI * 2)
+        ctx.stroke()
+      }
+
+      if (progress < 1) {
+        const tx = HOST1.x + (HOST2.x - HOST1.x) * Math.min(1, progress * 1.2)
+        const ty = HOST1.y - 10
+
+        ctx.fillStyle = 'rgba(34, 197, 94, 0.85)'
+        roundRect(ctx, tx - 42, ty - 12, 84, 24, 6)
+        ctx.fill()
+
+        ctx.fillStyle = '#fff'
+        ctx.font = 'bold 11px "SimSun", "STSong", sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText('ARP 请求（广播）', tx, ty + 4)
+      }
+
+      if (progress > 0.6) {
+        const px = HOST1.x + (HOST2.x - HOST1.x) * 0.3
+        const py = HOST1.y - 80
+
+        ctx.fillStyle = 'rgba(13,14,26,0.92)'
+        ctx.strokeStyle = 'rgba(34, 197, 94, 0.4)'
+        ctx.lineWidth = 1
+        roundRect(ctx, px - 90, py - 15, 180, 60, 6)
+        ctx.fill()
+        ctx.stroke()
+
+        ctx.fillStyle = '#22c55e'
+        ctx.font = 'bold 10px "SimSun", "STSong", serif'
+        ctx.textAlign = 'left'
+        ctx.fillText('ARP 请求包内容:', px - 80, py + 1)
+        ctx.fillStyle = '#e8e8f0'
+        ctx.font = '9px "SimSun", "STSong", serif'
+        ctx.fillText('发送端 MAC: E1    发送端 IP: 192.168.25.1', px - 80, py + 16)
+        ctx.fillText('目标 MAC: 00:00:00:00:00:00', px - 80, py + 30)
+        ctx.fillStyle = '#f59e0b'
+        ctx.fillText('目标 IP: 192.168.25.2（询问谁有此 IP）', px - 80, py + 44)
+      }
+
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.08)'
+      ctx.font = '10px "SimSun", "STSong", serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('广播地址: FF:FF:FF:FF:FF:FF', w/2, h - 20)
+    }
+
+    function drawArpResponse(progress) {
+      const w = canvas.getBoundingClientRect().width
+      const h = canvas.getBoundingClientRect().height
+
+      if (progress < 0.7) {
+        const p = Math.min(1, progress / 0.7)
+        const tx = HOST2.x - (HOST2.x - HOST1.x) * p
+        const ty = HOST2.y + 10
+
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.85)'
+        roundRect(ctx, tx - 42, ty - 12, 84, 24, 6)
+        ctx.fill()
+
+        ctx.fillStyle = '#fff'
+        ctx.font = 'bold 11px "SimSun", "STSong", sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText('ARP 响应（单播）', tx, ty + 4)
+
+        const arrowStart = HOST2.x - 50
+        const arrowEnd = HOST1.x + 50
+        const ax = arrowStart + (arrowEnd - arrowStart) * p
+        if (p > 0.05) {
+          ctx.strokeStyle = 'rgba(245, 158, 11, 0.5)'
+          ctx.lineWidth = 2
+          ctx.beginPath()
+          const ayStart = HOST2.y + 24
+          const ayEnd = HOST2.y + 24
+          ctx.moveTo(arrowStart, ayStart)
+          ctx.lineTo(ax, ayEnd)
+          ctx.stroke()
+          if (p < 0.95) {
+            ctx.beginPath()
+            ctx.moveTo(ax, ayEnd - 4)
+            ctx.lineTo(ax + 8, ayEnd)
+            ctx.lineTo(ax, ayEnd + 4)
+            ctx.closePath()
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.5)'
+            ctx.fill()
+          }
+        }
+      } else {
+        const p = (progress - 0.7) / 0.3
+        const x = HOST1.x
+        const y = HOST1.y - 70
+
+        ctx.fillStyle = 'rgba(34, 197, 94, 0.2)'
+        ctx.beginPath()
+        ctx.arc(x, y, 14 + 4 * Math.sin(p * Math.PI * 2), 0, Math.PI * 2)
+        ctx.fill()
+
+        ctx.fillStyle = '#22c55e'
+        ctx.font = 'bold 10px "SimSun", "STSong", serif'
+        ctx.textAlign = 'center'
+        ctx.fillText('✓ 已缓存 E2', x, y + 4)
+      }
+
+      if (progress > 0.2) {
+        const px = HOST1.x + (HOST2.x - HOST1.x) * 0.6
+        const py = HOST2.y + 45
+
+        ctx.fillStyle = 'rgba(13,14,26,0.92)'
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)'
+        ctx.lineWidth = 1
+        roundRect(ctx, px - 90, py - 15, 180, 60, 6)
+        ctx.fill()
+        ctx.stroke()
+
+        ctx.fillStyle = '#f59e0b'
+        ctx.font = 'bold 10px "SimSun", "STSong", serif'
+        ctx.textAlign = 'left'
+        ctx.fillText('ARP 响应包内容:', px - 80, py + 1)
+        ctx.fillStyle = '#e8e8f0'
+        ctx.font = '9px "SimSun", "STSong", serif'
+        ctx.fillText('发送端 MAC: E2    发送端 IP: 192.168.25.2', px - 80, py + 16)
+        ctx.fillStyle = '#22c55e'
+        ctx.fillText('目标 MAC: E1（回应主机1）', px - 80, py + 30)
+        ctx.fillText('▸ 我就是 192.168.25.2，我的 MAC 是 E2', px - 80, py + 44)
+      }
+    }
+
+    function drawDataFrame(progress) {
+      const w = canvas.getBoundingClientRect().width
+      const h = canvas.getBoundingClientRect().height
+
+      const p = Math.min(1, progress / 0.8)
+      const tx = HOST1.x + (HOST2.x - HOST1.x) * p
+      const ty = HOST1.y
+
+      ctx.fillStyle = 'rgba(244, 63, 94, 0.85)'
+      roundRect(ctx, tx - 40, ty - 14, 80, 28, 6)
+      ctx.fill()
+
+      ctx.fillStyle = '#fff'
+      ctx.font = 'bold 11px "SimSun", "STSong", sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('数据帧 -> E2', tx, ty + 5)
+
+      if (p > 0.1) {
+        ctx.strokeStyle = 'rgba(244, 63, 94, 0.4)'
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.moveTo(HOST1.x + 50, ty + 30)
+        ctx.lineTo(HOST1.x + (HOST2.x - HOST1.x) * p, ty + 30)
+        ctx.stroke()
+
+        const ax = HOST1.x + (HOST2.x - HOST1.x) * p
+        ctx.beginPath()
+        ctx.moveTo(ax, ty + 22)
+        ctx.lineTo(ax + 10, ty + 30)
+        ctx.lineTo(ax, ty + 38)
+        ctx.closePath()
+        ctx.fillStyle = 'rgba(244, 63, 94, 0.4)'
+        ctx.fill()
+      }
+
+      if (progress > 0.3) {
+        const px = HOST1.x + (HOST2.x - HOST1.x) * 0.4
+        const py = HOST1.y + 55
+
+        ctx.fillStyle = 'rgba(13,14,26,0.92)'
+        ctx.strokeStyle = 'rgba(244, 63, 94, 0.3)'
+        ctx.lineWidth = 1
+        roundRect(ctx, px - 90, py - 15, 180, 50, 6)
+        ctx.fill()
+        ctx.stroke()
+
+        ctx.fillStyle = '#f43f5e'
+        ctx.font = 'bold 10px "SimSun", "STSong", serif'
+        ctx.textAlign = 'left'
+        ctx.fillText('MAC 帧:', px - 80, py + 1)
+        ctx.fillStyle = '#e8e8f0'
+        ctx.font = '9px "SimSun", "STSong", serif'
+        ctx.fillText('目标 MAC（主机2）: E2', px - 80, py + 16)
+        ctx.fillText('源 MAC（主机1）: E1', px - 80, py + 30)
+      }
+    }
+
+    function drawDone() {
+      const w = canvas.getBoundingClientRect().width
+      const h = canvas.getBoundingClientRect().height
+
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.08)'
+      ctx.font = 'bold 22px "SimSun", "STSong", sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText('✓ 通信建立完成', w/2, 60)
+
+      ctx.fillStyle = 'rgba(255,255,255,0.15)'
+      ctx.font = '13px "SimSun", "STSong", serif'
+      ctx.fillText('主机1 已获得主机2 的 MAC 地址 E2，可直接发送数据', w/2, 86)
+      ctx.fillText('ARP 缓存也已更新，后续通信无需再次广播', w/2, 106)
+
+      ctx.strokeStyle = 'rgba(34, 197, 94, 0.3)'
+      ctx.lineWidth = 3
+      ctx.setLineDash([])
+      ctx.beginPath()
+      ctx.moveTo(HOST1.x + 50, HOST1.y)
+      ctx.lineTo(HOST2.x - 50, HOST2.y)
+      ctx.stroke()
+
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.5)'
+      ctx.font = '11px "SimSun", "STSong", sans-serif'
+      ctx.textAlign = 'center'
+      const midX = (HOST1.x + HOST2.x) / 2
+      ctx.fillText('TCP/IP 数据传输中...', midX, HOST1.y - 16)
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath()
+      ctx.moveTo(x + r, y)
+      ctx.lineTo(x + w - r, y)
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+      ctx.lineTo(x + w, y + h - r)
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+      ctx.lineTo(x + r, y + h)
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+      ctx.lineTo(x, y + r)
+      ctx.quadraticCurveTo(x, y, x + r, y)
+      ctx.closePath()
+    }
+
+    function updateCache(stepIndex) {
+      const c1 = document.getElementById('cache1Body')
+      const c2 = document.getElementById('cache2Body')
+
+      if (stepIndex === 0) {
+        c1.innerHTML = '<tr><td style="color:var(--muted);padding:0.3rem 0.5rem">192.168.25.2</td><td class="entry-miss">查找中...</td></tr>'
+        c2.innerHTML = '<tr><td colspan="2" style="color:var(--muted);text-align:center;padding:0.3rem">（空）</td></tr>'
+      } else if (stepIndex === 1) {
+        c1.innerHTML = '<tr><td style="color:var(--muted);padding:0.3rem 0.5rem">192.168.25.2</td><td class="entry-miss">未命中</td></tr>'
+        c2.innerHTML = '<tr><td colspan="2" style="color:var(--muted);text-align:center;padding:0.3rem">（空）</td></tr>'
+      } else if (stepIndex === 2) {
+        c1.innerHTML = '<tr><td style="color:var(--muted);padding:0.3rem 0.5rem">192.168.25.2</td><td class="entry-new">E2 ✓</td></tr>'
+        c2.innerHTML = '<tr><td colspan="2" style="color:var(--muted);text-align:center;padding:0.3rem">（空）</td></tr>'
+      } else if (stepIndex >= 3) {
+        c1.innerHTML = '<tr><td style="color:var(--muted);padding:0.3rem 0.5rem">192.168.25.2</td><td style="color:var(--success);padding:0.3rem 0.5rem;font-weight:bold">E2</td></tr>'
+        c2.innerHTML = '<tr><td style="color:var(--muted);padding:0.3rem 0.5rem">192.168.25.1</td><td style="color:var(--success);padding:0.3rem 0.5rem;font-weight:bold">E1</td></tr>'
+      }
+    }
+
+    function goToStep(stepIndex) {
+      if (animId) cancelAnimationFrame(animId)
+      if (timeoutId) clearTimeout(timeoutId)
+      currentStep = stepIndex
+
+      document.querySelectorAll('.step-dot').forEach(dot => {
+        const s = parseInt(dot.dataset.step)
+        dot.classList.toggle('active', s === stepIndex)
+        dot.classList.toggle('done', s < stepIndex)
+      })
+
+      document.getElementById('stepDesc').innerHTML =
+        '<b>' + steps[stepIndex].title + '</b><br>' + steps[stepIndex].desc
+
+      updateCache(stepIndex)
+
+      const startTime = Date.now()
+      const duration = 1200
+
+      function animate() {
+        const elapsed = Date.now() - startTime
+        const progress = Math.min(1, elapsed / duration)
+        ctx.clearRect(0, 0, canvas.getBoundingClientRect().width, canvas.getBoundingClientRect().height)
+        steps[stepIndex].draw(progress)
+        if (progress < 1) {
+          animId = requestAnimationFrame(animate)
+        } else {
+          animId = null
+          ctx.clearRect(0, 0, canvas.getBoundingClientRect().width, canvas.getBoundingClientRect().height)
+          steps[stepIndex].draw(1)
+        }
+      }
+      resize()
+      animate()
+    }
+
+    function startAnimation() {
+      if (isPlaying) return
+      if (currentStep < 0) {
+        currentStep = 0
+      } else if (currentStep >= steps.length - 1) {
+        return
+      } else {
+        currentStep++
+      }
+      goToStep(currentStep)
+    }
+
+    function autoPlay() {
+      if (isPlaying) return
+      isPlaying = true
+      currentStep = -1
+
+      function playNext() {
+        currentStep++
+        if (currentStep >= steps.length) {
+          isPlaying = false
+          document.getElementById('explanation').style.display = 'block'
+          document.getElementById('explanation').innerHTML =
+            '<h4>ARP 协议完整工作过程</h4>' +
+            '<ol>' +
+            '<li>主机1 查 ARP 缓存，未找到主机2（<b>192.168.25.2</b>）的 MAC 地址</li>' +
+            '<li>主机1 广播 <span class="highlight">ARP 请求</span>："谁的 IP 是 192.168.25.2？请回复"</li>' +
+            '<li>主机2 收到后，单播回复 <span class="highlight">ARP 响应</span>："我的 MAC 地址是 E2"</li>' +
+            '<li>主机1 更新 ARP 缓存，将 E2 填入 MAC 帧目标地址，发送数据</li>' +
+            '</ol>' +
+            '<p><b>关键点：</b>ARP 实现了 IP 地址到 MAC 地址的解析，<br>' +
+            '同一子网内通信时，数据链路层依赖 MAC 地址来寻址。</p>'
+          return
+        }
+        goToStep(currentStep)
+        timeoutId = setTimeout(playNext, 2500)
+      }
+      playNext()
+    }
+
+    function resetAll() {
+      if (animId) cancelAnimationFrame(animId)
+      if (timeoutId) clearTimeout(timeoutId)
+      isPlaying = false
+      currentStep = -1
+
+      document.querySelectorAll('.step-dot').forEach(dot => {
+        dot.classList.remove('active', 'done')
+      })
+
+      document.getElementById('stepDesc').textContent =
+        '准备就绪。点击"开始演示"观察 ARP 协议如何将 IP 地址解析为 MAC 地址。'
+      document.getElementById('cache1Body').innerHTML =
+        '<tr><td colspan="2" style="color:var(--muted);text-align:center;padding:0.3rem">（空）</td></tr>'
+      document.getElementById('cache2Body').innerHTML =
+        '<tr><td colspan="2" style="color:var(--muted);text-align:center;padding:0.3rem">（空）</td></tr>'
+      document.getElementById('explanation').style.display = 'none'
+      document.getElementById('explanation').innerHTML = ''
+
+      resize()
+      drawTopology()
+    }
+
+    resize()
+    drawTopology()
+  </script>
+
+<!-- AI 答疑悬浮按钮 -->
+<button class="ai-float-btn" onclick="toggleAiPanel()">
+  <svg width="20" height="20" viewBox="0 0 1024 1024">
+    <path d="M122.281 287v450L317.15 624.5v-225z" fill="#0423DB"/>
+    <path d="M317.15 399.5v225L512 512z" fill="#1C54E4"/>
+    <path d="M512 512L317.15 399.5l389.625-225.131L901.719 287z" fill="#AB9BFF"/>
+    <path d="M317.15 399.5L122.281 287 512 62l194.775 112.369z" fill="#7347FF"/>
+    <path d="M901.719 737L512 962 317.15 849.5l389.7-225z" fill="#00CFCA"/>
+    <path d="M706.85 624.5L901.719 512v225z m-389.7 225L122.281 737 512 512l194.85 112.5z" fill="#00EBD2"/>
+  </svg>
+  <span>AI 答疑</span>
+</button>
+
+<!-- AI 面板 -->
+<div class="ai-panel" id="aiPanel">
+  <div class="ai-panel-header">
+    <span>AI 助手</span>
+    <button class="ai-close" onclick="toggleAiPanel()">×</button>
+  </div>
+  <div class="ai-messages" id="aiMessages">
+    <div class="ai-welcome">
+      <p>你好！我是 AI 刷题助手。</p>
+      <p>当前页面讲解的是 <strong>ARP 协议工作过程</strong>，包括 ARP 请求广播、单播响应、MAC 地址解析等。</p>
+      <p>你可以问我任何相关问题，比如：</p>
+      <ul>
+        <li>什么是 ARP 协议？</li>
+        <li>ARP 请求为什么是广播？</li>
+        <li>ARP 和 DNS 的区别是什么？</li>
+      </ul>
+    </div>
+  </div>
+  <div class="ai-input-area">
+    <input type="text" id="aiInput" placeholder="输入问题，按 Enter 发送..." onkeydown="handleAiKeyDown(event)" />
+    <button onclick="sendAiMessage()">发送</button>
+  </div>
+</div>
+
+<style>
+.ai-float-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: linear-gradient(135deg, #0423DB 0%, #1C54E4 50%, #7347FF 100%);
+  border: none;
+  border-radius: 28px;
+  padding: 12px 20px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 4px 20px rgba(4, 33, 219, 0.4);
+  transition: all 0.2s ease;
+  z-index: 1000;
+  font-family: inherit;
+}
+.ai-float-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(4, 33, 219, 0.5); }
+.ai-panel {
+  position: fixed;
+  bottom: 80px;
+  right: 24px;
+  width: 360px;
+  height: 480px;
+  background: #1a1a2e;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+}
+.ai-panel.open { display: flex; }
+.ai-panel-header {
+  background: linear-gradient(135deg, #0423DB 0%, #1C54E4 100%);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  font-size: 14px;
+  color: #fff;
+}
+.ai-close { background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; padding: 0; line-height: 1; opacity: 0.8; }
+.ai-messages { flex: 1; overflow-y: auto; padding: 12px; }
+.ai-welcome { background: #161628; border-radius: 10px; padding: 12px; font-size: 13px; line-height: 1.6; color: #9898b0; }
+.ai-welcome p { margin-bottom: 8px; }
+.ai-welcome p:last-child { margin-bottom: 0; }
+.ai-welcome strong { color: #e8e8f0; }
+.ai-welcome ul { margin: 8px 0 0 16px; }
+.ai-welcome li { margin-bottom: 4px; }
+.ai-msg { margin-bottom: 10px; padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.6; }
+.ai-msg.user { background: #1e3a5f; align-self: flex-end; border-bottom-right-radius: 4px; }
+.ai-msg.ai { background: #161628; align-self: flex-start; border-bottom-left-radius: 4px; }
+.ai-msg.loading { color: #9898b0; font-style: italic; }
+.ai-input-area { padding: 12px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; gap: 8px; }
+.ai-input-area input { flex: 1; padding: 8px 12px; background: #161628; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #e8e8f0; font-size: 13px; font-family: inherit; }
+.ai-input-area input:focus { outline: none; border-color: #3b82f6; }
+.ai-input-area input::placeholder { color: #9898b0; }
+.ai-input-area button { padding: 8px 16px; background: #059669; border: none; border-radius: 8px; color: #fff; font-size: 13px; cursor: pointer; font-family: inherit; }
+.ai-input-area button:hover { filter: brightness(1.1); }
+</style>
+
+<script>
+let aiLoading = false;
+function toggleAiPanel() { document.getElementById('aiPanel').classList.toggle('open'); }
+function addAiMsg(role, content, loading = false) {
+  const c = document.getElementById('aiMessages');
+  const d = document.createElement('div');
+  d.className = 'ai-msg ' + role + (loading ? ' loading' : '');
+  d.textContent = loading ? '正在思考...' : content;
+  c.appendChild(d);
+  c.scrollTop = c.scrollHeight;
+}
+async function sendAiMessage() {
+  const input = document.getElementById('aiInput');
+  const text = input.value.trim();
+  if (!text || aiLoading) return;
+  addAiMsg('user', text);
+  input.value = '';
+  aiLoading = true;
+  addAiMsg('ai', '', true);
+  try {
+    const ctx = '【当前页面】ARP 协议工作过程动画演示\n\n包含 ARP 请求广播、单播响应、MAC 地址解析等过程。\n用户问题：' + text;
+    const ans = await callAI(ctx);
+    document.querySelectorAll('.ai-msg.ai.loading').forEach(m => m.remove());
+    addAiMsg('ai', ans);
+  } catch (e) {
+    document.querySelectorAll('.ai-msg.ai.loading').forEach(m => m.remove());
+    addAiMsg('ai', '抱歉：' + e.message);
+  }
+  aiLoading = false;
+}
+async function callAI(prompt) {
+  const r = await fetch('/api/ai/config');
+  const c = r.ok ? await r.json() : {};
+  if (!c.apiKey) throw new Error('AI API 未配置');
+  const res = await fetch('/api/ai/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages: [{ role: 'user', content: prompt }], model: c.model || 'gpt-3.5-turbo' })
+  });
+  if (!res.ok) throw new Error('API 请求失败');
+  return (await res.json()).choices[0].message.content;
+}
+function handleAiKeyDown(e) { if (e.key === 'Enter') { e.preventDefault(); sendAiMessage(); } }
+</script>
+</body>
+</html>

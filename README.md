@@ -2,8 +2,8 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/github/v/release/shyqwdn123-creator/FinalPreview?color=blue&label=version)](https://github.com/shyqwdn123-creator/FinalPreview/releases)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/shyqwdn123-creator/FinalPreview/releases)
+[![Version](https://img.shields.io/github/v/release/shy20057/finalPreview?color=blue&label=version)](https://github.com/shy20057/finalPreview/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/shy20057/finalPreview/releases)
 [![Built with Vue](https://img.shields.io/badge/built%20with-Vue%203-green.svg)](https://vuejs.org/)
 
 </div>
@@ -151,8 +151,8 @@ FinalPrep/
 
 ```bash
 # 克隆项目
-git clone https://github.com/shyqwdn123-creator/FinalPreview.git
-cd FinalPreview
+git clone https://github.com/shy20057/finalPreview.git
+cd finalPreview
 
 # 安装前端依赖
 npm install

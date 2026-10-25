@@ -1,0 +1,1745 @@
+ <!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>操作系统存储管理原理动画讲解</title>
+  <style>
+    :root {
+      --bg: #0d0e1a;
+      --surface: #161628;
+      --card: #1a1a2e;
+      --card2: #1e1e36;
+      --text: #e8e8f0;
+      --muted: #9898b0;
+      --accent: #22c55e;
+      --accent2: #16a34a;
+      --blue: #60a5fa;
+      --blue2: #3b82f6;
+      --purple: #a78bfa;
+      --purple2: #8b5cf6;
+      --amber: #fbbf24;
+      --amber2: #f59e0b;
+      --red: #f43f5e;
+      --cyan: #22d3ee;
+      --border: rgba(255,255,255,0.08);
+      --border2: rgba(255,255,255,0.12);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.8;
+      min-height: 100vh;
+    }
+
+    /* ===== 全局导航 ===== */
+    .global-nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(13,14,26,0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0.6rem 1.5rem;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    }
+    .nav-chip {
+      padding: 0.35rem 0.875rem; border-radius: 999px;
+      font-size: 0.8rem; font-weight: 600;
+      border: 1.5px solid var(--border2); background: transparent;
+      color: var(--muted); cursor: pointer; white-space: nowrap;
+      transition: all 0.2s ease; font-family: inherit;
+    }
+    .nav-chip:hover { border-color: var(--accent); color: var(--text); }
+    .nav-chip.active {
+      background: rgba(34,197,94,0.12); border-color: var(--accent); color: var(--accent);
+    }
+    .nav-chip .weight { font-size: 0.65rem; opacity: 0.6; margin-left: 0.25rem; }
+
+    /* ===== 主容器 ===== */
+    .container { max-width: 1100px; margin: 0 auto; padding: 1.25rem 1.5rem; }
+
+    /* ===== 章节 ===== */
+    .chapter { display: none; animation: fadeIn 0.4s ease; }
+    .chapter.active { display: block; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== 章节头 ===== */
+    .ch-header { text-align: center; padding: 1.75rem 0 1.25rem; }
+    .ch-tag {
+      display: inline-block; padding: 0.2rem 0.7rem; border-radius: 999px;
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.06em; margin-bottom: 0.6rem;
+    }
+    .ch-tag.frag { background: rgba(245,158,11,0.12); color: var(--amber); border: 1px solid rgba(245,158,11,0.2); }
+    .ch-tag.page { background: rgba(59,130,246,0.12); color: var(--blue); border: 1px solid rgba(59,130,246,0.2); }
+    .ch-tag.seg { background: rgba(139,92,246,0.12); color: var(--purple); border: 1px solid rgba(139,92,246,0.2); }
+    .ch-tag.segpage { background: rgba(34,211,238,0.12); color: var(--cyan); border: 1px solid rgba(34,211,238,0.2); }
+    .ch-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.4rem; }
+    .ch-desc { font-size: 0.85rem; color: var(--muted); max-width: 580px; margin: 0 auto; line-height: 1.7; }
+
+    /* ===== 场景卡片 ===== */
+    .scene {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.25rem;
+    }
+    .scene-title {
+      font-size: 0.95rem; font-weight: 700; margin-bottom: 0.75rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .scene-num {
+      width: 22px; height: 22px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem; font-weight: 800; flex-shrink: 0;
+    }
+    .scene-num.blue { background: var(--blue2); color: #fff; }
+    .scene-num.purple { background: var(--purple2); color: #fff; }
+    .scene-num.amber { background: var(--amber2); color: #fff; }
+    .scene-num.cyan { background: #0891b2; color: #fff; }
+    .scene-num.green { background: var(--accent2); color: #fff; }
+
+    /* ===== 两栏布局 ===== */
+    .scene-body {
+      display: grid; grid-template-columns: 1.1fr 0.9fr;
+      gap: 1.25rem; align-items: start;
+    }
+    @media (max-width: 800px) { .scene-body { grid-template-columns: 1fr; } }
+
+    /* ===== 动画画布 ===== */
+    .canvas {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 1rem;
+      min-height: 180px; position: relative; overflow: hidden;
+    }
+    .canvas-label {
+      font-size: 0.65rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.5rem;
+    }
+
+    /* ===== 文字讲解 ===== */
+    .explanation { padding: 0.25rem 0; }
+    .explanation p {
+      font-size: 0.82rem; color: var(--muted); line-height: 1.8; margin-bottom: 0.5rem;
+    }
+    .hl-blue { color: var(--blue); font-weight: 600; }
+    .hl-purple { color: var(--purple); font-weight: 600; }
+    .hl-green { color: var(--accent); font-weight: 600; }
+    .hl-amber { color: var(--amber); font-weight: 600; }
+    .hl-red { color: var(--red); font-weight: 600; }
+    .hl-cyan { color: var(--cyan); font-weight: 600; }
+
+    /* ===== 公式框 ===== */
+    .formula-box {
+      background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.15);
+      border-radius: var(--radius-sm); padding: 0.65rem 0.9rem; margin: 0.4rem 0;
+      font-family: 'Fira Code', 'Consolas', monospace; font-size: 0.78rem;
+      color: var(--blue); line-height: 1.6;
+    }
+    .formula-box.purple-f {
+      background: rgba(139,92,246,0.06); border-color: rgba(139,92,246,0.15); color: var(--purple);
+    }
+    .formula-box.cyan-f {
+      background: rgba(34,211,238,0.06); border-color: rgba(34,211,238,0.15); color: var(--cyan);
+    }
+    .formula-box.amber-f {
+      background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.15); color: var(--amber);
+    }
+
+    /* ===== 步骤控制 ===== */
+    .step-controls {
+      display: flex; align-items: center; gap: 0.4rem;
+      margin-top: 0.75rem; padding-top: 0.6rem; border-top: 1px solid var(--border);
+    }
+    .step-btn {
+      padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.78rem;
+      font-weight: 600; cursor: pointer; border: 1px solid var(--border2);
+      background: var(--surface); color: var(--text); transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    .step-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .step-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .step-btn.primary {
+      background: var(--accent); color: #fff; border-color: var(--accent);
+    }
+    .step-btn.primary:hover { background: var(--accent2); }
+    .step-btn.playing { background: var(--amber2); border-color: var(--amber2); color: #fff; }
+    .step-counter {
+      font-size: 0.72rem; color: var(--muted); font-family: 'Fira Code', monospace; margin-left: auto;
+    }
+
+    /* ===== 步骤指示器 ===== */
+    .step-indicators {
+      display: flex; gap: 4px; margin-bottom: 0.75rem;
+    }
+    .step-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--border2); transition: all 0.3s ease;
+    }
+    .step-dot.active { background: var(--accent); box-shadow: 0 0 6px rgba(34,197,94,0.5); }
+    .step-dot.done { background: rgba(34,197,94,0.4); }
+
+    /* ===== 内存块组件 ===== */
+    .mem-row {
+      display: flex; gap: 2px; margin-bottom: 2px; border-radius: 4px; overflow: hidden;
+    }
+    .mem-block {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem; font-weight: 700; border-radius: 3px;
+      transition: all 0.5s cubic-bezier(0.16,1,0.3,1);
+      height: 38px; position: relative; overflow: hidden;
+    }
+    .mem-block.used { color: rgba(255,255,255,0.9); }
+    .mem-block.free {
+      background: var(--card2); border: 1px dashed var(--border2);
+      color: var(--muted); font-size: 0.55rem;
+    }
+    .mem-block.released {
+      opacity: 0.35; border: 2px dashed; background: transparent !important;
+    }
+    .mem-block.flash-red {
+      animation: flashRed 0.5s ease infinite;
+    }
+    @keyframes flashRed {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(244,63,94,0); }
+      50% { box-shadow: 0 0 12px 4px rgba(244,63,94,0.5); border-color: var(--red); }
+    }
+    .mem-block.entering {
+      animation: blockEnter 0.5s cubic-bezier(0.16,1,0.3,1) forwards;
+    }
+    @keyframes blockEnter {
+      from { opacity: 0; transform: scaleX(0.3); }
+      to { opacity: 1; transform: scaleX(1); }
+    }
+
+    /* 颜色 */
+    .c-blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    .c-purple { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+    .c-cyan { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+    .c-amber { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .c-green { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    .c-red { background: linear-gradient(135deg, #f43f5e, #e11d48); }
+    .c-pink { background: linear-gradient(135deg, #ec4899, #db2777); }
+    .c-indigo { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+    .c-teal { background: linear-gradient(135deg, #14b8a6, #0d9488); }
+    .c-orange { background: linear-gradient(135deg, #f97316, #ea580c); }
+
+    /* ===== 表格 ===== */
+    .data-table {
+      width: 100%; border-collapse: separate; border-spacing: 0;
+      font-size: 0.72rem; font-family: 'Fira Code', 'Consolas', monospace;
+    }
+    .data-table th {
+      background: var(--surface); padding: 0.35rem 0.5rem;
+      text-align: left; color: var(--muted); font-weight: 600;
+      font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.04em;
+      border-bottom: 1px solid var(--border2);
+    }
+    .data-table td {
+      padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--border);
+      transition: all 0.3s ease;
+    }
+    .data-table tr.row-active td { background: rgba(34,197,94,0.1); }
+    .data-table tr.row-hit td { background: rgba(34,197,94,0.15); }
+    .data-table tr.row-search td { background: rgba(59,130,246,0.1); }
+    .data-table tr.row-error td { background: rgba(244,63,94,0.12); }
+
+    /* ===== 寄存器 ===== */
+    .reg-box {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.4rem 0.75rem; background: var(--surface);
+      border: 1.5px solid var(--border2); border-radius: var(--radius-sm);
+      font-family: 'Fira Code', monospace; font-size: 0.8rem;
+      font-weight: 700; transition: all 0.3s ease;
+    }
+    .reg-box.reg-active {
+      border-color: var(--accent); box-shadow: 0 0 0 3px rgba(34,197,94,0.15);
+    }
+    .reg-label { font-size: 0.6rem; font-weight: 600; color: var(--muted); text-transform: uppercase; }
+
+    /* ===== 映射线 ===== */
+    .mapping-area {
+      display: flex; align-items: stretch; gap: 0; position: relative;
+    }
+    .mapping-left, .mapping-right {
+      flex: 1; display: flex; flex-direction: column; gap: 2px;
+    }
+    .mapping-center {
+      width: 80px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; position: relative;
+    }
+    .map-block {
+      height: 32px; border-radius: 4px; display: flex;
+      align-items: center; justify-content: center;
+      font-size: 0.6rem; font-weight: 700; color: rgba(255,255,255,0.9);
+      transition: all 0.4s ease;
+    }
+    .map-block.dim { opacity: 0.3; }
+    .map-line {
+      position: absolute; height: 2px; transform-origin: left center;
+      opacity: 0; transition: opacity 0.4s ease;
+    }
+    .map-line.visible { opacity: 1; }
+    .map-line.l-blue { background: var(--blue); }
+    .map-line.l-purple { background: var(--purple); }
+    .map-line.l-cyan { background: var(--cyan); }
+    .map-line.l-amber { background: var(--amber); }
+    .map-line.l-green { background: var(--accent); }
+    .map-line.l-red { background: var(--red); }
+    .map-line.l-pink { background: #ec4899; }
+    .map-line.l-indigo { background: #6366f1; }
+
+    /* ===== 对比表格 ===== */
+    .compare-table {
+      width: 100%; border-collapse: separate; border-spacing: 0;
+      font-size: 0.78rem;
+    }
+    .compare-table th {
+      padding: 0.5rem 0.75rem; text-align: left; font-weight: 700;
+      font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em;
+      border-bottom: 2px solid var(--border2);
+    }
+    .compare-table th.th-blue { color: var(--blue); background: rgba(59,130,246,0.06); }
+    .compare-table th.th-purple { color: var(--purple); background: rgba(139,92,246,0.06); }
+    .compare-table th.th-cyan { color: var(--cyan); background: rgba(34,211,238,0.06); }
+    .compare-table td {
+      padding: 0.4rem 0.75rem; border-bottom: 1px solid var(--border);
+      color: var(--muted); line-height: 1.6;
+    }
+    .compare-table tr:last-child td { border-bottom: none; }
+    .compare-table td.td-label { color: var(--text); font-weight: 600; white-space: nowrap; }
+
+    /* ===== 数据流箭头 ===== */
+    .flow-row {
+      display: flex; align-items: center; gap: 0.5rem;
+      margin-bottom: 0.5rem; flex-wrap: wrap;
+    }
+    .flow-box {
+      padding: 0.35rem 0.6rem; background: var(--surface);
+      border: 1.5px solid var(--border2); border-radius: 6px;
+      font-family: 'Fira Code', monospace; font-size: 0.72rem;
+      font-weight: 600; transition: all 0.3s ease; white-space: nowrap;
+    }
+    .flow-box.active {
+      border-color: var(--accent); box-shadow: 0 0 8px rgba(34,197,94,0.2);
+    }
+    .flow-box.active-blue { border-color: var(--blue); box-shadow: 0 0 8px rgba(59,130,246,0.2); }
+    .flow-box.active-purple { border-color: var(--purple); box-shadow: 0 0 8px rgba(139,92,246,0.2); }
+    .flow-box.active-cyan { border-color: var(--cyan); box-shadow: 0 0 8px rgba(34,211,238,0.2); }
+    .flow-arrow {
+      font-size: 0.7rem; color: var(--muted); transition: color 0.3s ease;
+    }
+    .flow-arrow.active { color: var(--accent); }
+
+    /* ===== 关键点 ===== */
+    .key-point {
+      background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2);
+      border-radius: var(--radius-sm); padding: 0.6rem 0.9rem; margin: 0.5rem 0;
+      font-size: 0.82rem;
+    }
+    .key-point strong { color: var(--accent); }
+    .key-point.amber-kp {
+      background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.2);
+    }
+    .key-point.amber-kp strong { color: var(--amber); }
+    .key-point.red-kp {
+      background: rgba(244,63,94,0.08); border-color: rgba(244,63,94,0.2);
+    }
+    .key-point.red-kp strong { color: var(--red); }
+
+    /* ===== 逻辑地址二进制 ===== */
+    .binary-row {
+      display: flex; gap: 1px; margin: 0.5rem 0;
+    }
+    .binary-cell {
+      width: 28px; height: 32px; display: flex; align-items: center; justify-content: center;
+      font-family: 'Fira Code', monospace; font-size: 0.82rem; font-weight: 700;
+      background: var(--surface); border: 1px solid var(--border);
+      transition: all 0.3s ease;
+    }
+    .binary-cell.bit-high {
+      background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.3); color: var(--blue);
+    }
+    .binary-cell.bit-low {
+      background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.3); color: var(--accent);
+    }
+    .binary-sep {
+      width: 2px; background: var(--amber); margin: 0 3px; border-radius: 1px;
+    }
+
+    /* ===== TLB 对比 ===== */
+    .tlb-compare {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+    }
+    .tlb-case {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 0.75rem;
+    }
+    .tlb-case-title {
+      font-size: 0.72rem; font-weight: 700; margin-bottom: 0.5rem;
+    }
+    .tlb-case-title.hit { color: var(--accent); }
+    .tlb-case-title.miss { color: var(--red); }
+
+    /* ===== 段页式二级查表 ===== */
+    .lookup-flow {
+      display: flex; flex-direction: column; gap: 0.5rem; align-items: center;
+    }
+    .lookup-step {
+      display: flex; align-items: center; gap: 0.4rem; opacity: 0.3;
+      transition: all 0.4s ease;
+    }
+    .lookup-step.active { opacity: 1; }
+    .lookup-step.done { opacity: 0.5; }
+    .lookup-box {
+      padding: 0.4rem 0.7rem; background: var(--card2);
+      border: 1.5px solid var(--border2); border-radius: 6px;
+      font-family: 'Fira Code', monospace; font-size: 0.72rem; font-weight: 600;
+      transition: all 0.3s ease;
+    }
+    .lookup-box.lb-active {
+      border-color: var(--accent); box-shadow: 0 0 8px rgba(34,197,94,0.2);
+    }
+    .lookup-box.lb-blue { border-color: var(--blue); box-shadow: 0 0 8px rgba(59,130,246,0.2); }
+    .lookup-box.lb-purple { border-color: var(--purple); box-shadow: 0 0 8px rgba(139,92,246,0.2); }
+    .lookup-box.lb-cyan { border-color: var(--cyan); box-shadow: 0 0 8px rgba(34,211,238,0.2); }
+    .lookup-box.lb-amber { border-color: var(--amber); box-shadow: 0 0 8px rgba(245,158,11,0.2); }
+
+    /* ===== 结论框 ===== */
+    .conclusion {
+      background: linear-gradient(135deg, rgba(34,197,94,0.1), rgba(34,211,238,0.05));
+      border: 1px solid rgba(34,197,94,0.2); border-radius: var(--radius-sm);
+      padding: 0.75rem 1rem; margin-top: 0.75rem; font-size: 0.85rem; text-align: center;
+    }
+    .conclusion strong { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<!-- ===== 顶部粘性导航 ===== -->
+<div class="global-nav">
+  <button class="nav-chip active" onclick="switchChapter(0)">碎片化问题<span class="weight">5%</span></button>
+  <button class="nav-chip" onclick="switchChapter(1)">分页存储<span class="weight">45%</span></button>
+  <button class="nav-chip" onclick="switchChapter(2)">分段存储<span class="weight">35%</span></button>
+  <button class="nav-chip" onclick="switchChapter(3)">段页式<span class="weight">15%</span></button>
+</div>
+
+<div class="container">
+
+<!-- ================================================================ -->
+<!-- 第一章：碎片化问题 -->
+<!-- ================================================================ -->
+<div class="chapter active" id="ch0">
+  <div class="ch-header">
+    <div class="ch-tag frag">Chapter 01</div>
+    <h2 class="ch-title">碎片化问题</h2>
+    <p class="ch-desc">内存分配与释放过程中产生的"碎片"，是存储管理需要解决的核心问题之一</p>
+  </div>
+
+  <!-- 场景1：外部碎片 -->
+  <div class="scene" id="scene-extfrag">
+    <div class="scene-title">
+      <span class="scene-num amber">1</span>
+      外部碎片 — 反复分配释放后的不连续空闲
+    </div>
+    <div class="scene-body">
+      <div class="canvas" id="extfrag-canvas">
+        <div class="canvas-label">内存空间 (1KB 总量)</div>
+        <div id="extfrag-mem" style="display:flex;flex-direction:column;gap:2px;"></div>
+        <div id="extfrag-info" style="margin-top:0.75rem;font-size:0.72rem;color:var(--muted);min-height:1.5rem;"></div>
+      </div>
+      <div class="explanation" id="extfrag-exp">
+        <p>初始状态：内存全部空闲（1000B）</p>
+        <p>点击"下一步"观察分配和释放的过程…</p>
+      </div>
+    </div>
+    <div class="step-controls">
+      <button class="step-btn" onclick="scenePrev('extfrag')">← 上一步</button>
+      <button class="step-btn primary" onclick="sceneNext('extfrag')">下一步 →</button>
+      <button class="step-btn" id="extfrag-auto" onclick="sceneAuto('extfrag')">▶ 自动播放</button>
+      <span class="step-counter" id="extfrag-counter">0 / 4</span>
+    </div>
+  </div>
+
+  <!-- 场景2：内部碎片 -->
+  <div class="scene" id="scene-intfrag">
+    <div class="scene-title">
+      <span class="scene-num amber">2</span>
+      内部碎片 — 固定大小分配造成的浪费
+    </div>
+    <div class="scene-body">
+      <div class="canvas" id="intfrag-canvas">
+        <div class="canvas-label">页框分配（页框大小 256B）</div>
+        <div style="display:flex;gap:2px;margin-bottom:0.5rem;">
+          <div id="intfrag-block" style="flex:0 0 256px;height:50px;background:var(--card2);border:2px dashed var(--border2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:0.72rem;color:var(--muted);transition:all 0.5s ease;overflow:hidden;position:relative;">
+            <span id="intfrag-label">空闲页框 (256B)</span>
+          </div>
+        </div>
+        <div id="intfrag-bar" style="height:8px;border-radius:4px;overflow:hidden;display:flex;gap:1px;margin-top:0.375rem;opacity:0;transition:opacity 0.5s ease;">
+          <div style="flex:0 0 260px;background:var(--blue);border-radius:4px;"></div>
+          <div style="flex:0 0 4px;background:var(--red);border-radius:4px;"></div>
+        </div>
+        <div id="intfrag-detail" style="margin-top:0.5rem;font-size:0.72rem;color:var(--muted);opacity:0;transition:opacity 0.5s ease;"></div>
+      </div>
+      <div class="explanation" id="intfrag-exp">
+        <p>请求 <span class="hl-blue">260B</span>，但页框固定大小为 <span class="hl-amber">256B</span></p>
+        <p>需要分配 <span class="hl-blue">2 个页框</span> (512B)</p>
+        <p>第2个页框只用了 4B，剩余 <span class="hl-red">252B 浪费</span></p>
+        <div class="key-point amber-kp" style="margin-top:0.5rem;">
+          <strong>内部碎片：</strong>分配给进程的内存大于实际需求，多出的部分无法被其他进程使用
+        </div>
+        <div class="key-point red-kp" style="margin-top:0.375rem;">
+          <strong>外部碎片：</strong>空闲内存总量足够，但分散在不连续的小块中，无法满足大请求
+        </div>
+      </div>
+    </div>
+    <div class="step-controls">
+      <button class="step-btn" onclick="scenePrev('intfrag')">← 上一步</button>
+      <button class="step-btn primary" onclick="sceneNext('intfrag')">下一步 →</button>
+      <button class="step-btn" id="intfrag-auto" onclick="sceneAuto('intfrag')">▶ 自动播放</button>
+      <span class="step-counter" id="intfrag-counter">0 / 2</span>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- 第二章：分页存储管理 -->
+<!-- ================================================================ -->
+<div class="chapter" id="ch1">
+  <div class="ch-header">
+    <div class="ch-tag page">Chapter 02</div>
+    <h2 class="ch-title">分页存储管理</h2>
+    <p class="ch-desc">将逻辑地址空间和物理内存都划分为等大小的块，通过页表建立映射关系</p>
+  </div>
+
+  <!-- 场景1：核心思想 -->
+  <div class="scene" id="scene-paging-core">
+    <div class="scene-title">
+      <span class="scene-num blue">1</span>
+      核心思想 — 等大小分块，非连续映射
+    </div>
+    <div class="scene-body">
+      <div class="canvas">
+        <div class="canvas-label">页 → 帧映射</div>
+        <div class="mapping-area">
+          <div class="mapping-left">
+            <div style="font-size:0.6rem;color:var(--muted);text-align:center;margin-bottom:2px;">逻辑地址空间</div>
+            <div class="map-block c-blue dim" data-pg="0">页 0</div>
+            <div class="map-block c-purple dim" data-pg="1">页 1</div>
+            <div class="map-block c-cyan dim" data-pg="2">页 2</div>
+            <div class="map-block c-amber dim" data-pg="3">页 3</div>
+            <div class="map-block c-green dim" data-pg="4">页 4</div>
+            <div class="map-block c-red dim" data-pg="5">页 5</div>
+            <div class="map-block c-pink dim" data-pg="6">页 6</div>
+            <div class="map-block c-indigo dim" data-pg="7">页 7</div>
+          </div>
+          <div class="mapping-center" id="paging-lines">
+            <!-- 映射线由JS绘制 -->
+          </div>
+          <div class="mapping-right">
+            <div style="font-size:0.6rem;color:var(--muted);text-align:center;margin-bottom:2px;">物理内存</div>
+            <div class="map-block dim" data-fr="0" style="background:var(--card2);border:1px dashed var(--border2);color:var(--muted);">帧 0</div>
+            <div class="map-block dim" data-fr="1" style="background:var(--card2);border:1px dashed var(--border2);color:var(--muted);">帧 1</div>
+            <div class="map-block dim" data-fr="2" style="background:var(--card2);border:1px dashed var(--border2);color:var(--muted);">帧 2</div>
+            <div class="map-block dim" data-fr="3" style="background:var(--card2);border:1px dashed var(--border2);color:var(--muted);">帧 3</div>
+            <div class="map-block dim" data-fr="4" style="background:var(--card2);border:1px dashed var(--border2);color:var(--muted);">帧 4</div>
+            <div class="map-block dim" data-fr="5" style="background:var(--card2);border:1px dashed var(--border2);color:var(--muted);">帧 5</div>
+            <div class="map-block dim" data-fr="6" style="background:var(--card2);border:1px dashed var(--border2);color:var(--muted);">帧 6</div>
+            <div class="map-block dim" data-fr="7" style="background:var(--card2);border:1px dashed var(--border2);color:var(--muted);">帧 7</div>
+          </div>
+        </div>
+      </div>
+      <div class="explanation" id="paging-core-exp">
+        <p>左侧为进程的 <span class="hl-blue">逻辑地址空间</span>，被等分为8个页</p>
+        <p>右侧为 <span class="hl-green">物理内存</span>，被等分为8个页框（帧）</p>
+        <p>点击"下一步"观察映射过程…</p>
+      </div>
+    </div>
+    <div class="step-controls">
+      <button class="step-btn" onclick="scenePrev('paging-core')">← 上一步</button>
+      <button class="step-btn primary" onclick="sceneNext('paging-core')">下一步 →</button>
+      <button class="step-btn" id="paging-core-auto" onclick="sceneAuto('paging-core')">▶ 自动播放</button>
+      <span class="step-counter" id="paging-core-counter">0 / 8</span>
+    </div>
+  </div>
+
+  <!-- 场景2：地址结构 -->
+  <div class="scene" id="scene-paging-addr">
+    <div class="scene-title">
+      <span class="scene-num blue">2</span>
+      地址结构 — 逻辑地址的二进制分解
+    </div>
+    <div class="scene-body">
+      <div class="canvas">
+        <div class="canvas-label">逻辑地址拆分 (页大小 1KB = 2¹⁰B)</div>
+        <div style="margin-bottom:0.5rem;">
+          <span class="reg-label">逻辑地址：</span>
+          <span class="reg-box" id="addr-dec">1443</span>
+          <span style="color:var(--muted);margin:0 0.25rem;">=</span>
+          <span class="reg-box" id="addr-hex">0x05A3</span>
+        </div>
+        <div style="margin-bottom:0.5rem;">
+          <span class="reg-label">二进制：</span>
+          <div class="binary-row" id="addr-binary"></div>
+        </div>
+        <div style="display:flex;gap:1rem;margin-top:0.75rem;">
+          <div>
+            <span class="reg-label">页号 (高6位)：</span>
+            <span class="reg-box" id="addr-page" style="border-color:var(--blue);color:var(--blue);">—</span>
+          </div>
+          <div>
+            <span class="reg-label">偏移 (低10位)：</span>
+            <span class="reg-box" id="addr-offset" style="border-color:var(--accent);color:var(--accent);">—</span>
+          </div>
+        </div>
+        <div id="addr-formula" class="formula-box" style="margin-top:0.75rem;opacity:0;transition:opacity 0.5s ease;">
+          页号 = ⌊1443 / 1024⌋ = 1<br>
+          偏移 = 1443 % 1024 = 419
+        </div>
+      </div>
+      <div class="explanation" id="paging-addr-exp">
+        <p>逻辑地址 <span class="hl-blue">1443</span> (0x05A3)</p>
+        <p>页大小 = 1KB = 2¹⁰ = 1024B</p>
+        <p>地址共 16 位，低 <span class="hl-green">10 位</span>为页内偏移，高 <span class="hl-blue">6 位</span>为页号</p>
+        <div class="formula-box" style="margin-top:0.5rem;">
+          页号 = 逻辑地址 / 页大小<br>
+          偏移 = 逻辑地址 % 页大小
+        </div>
+      </div>
+    </div>
+    <div class="step-controls">
+      <button class="step-btn" onclick="scenePrev('paging-addr')">← 上一步</button>
+      <button class="step-btn primary" onclick="sceneNext('paging-addr')">下一步 →</button>
+      <button class="step-btn" id="paging-addr-auto" onclick="sceneAuto('paging-addr')">▶ 自动播放</button>
+      <span class="step-counter" id="paging-addr-counter">0 / 3</span>
+    </div>
+  </div>
+
+  <!-- 场景3：页表与地址翻译 -->
+  <div class="scene" id="scene-paging-trans">
+    <div class="scene-title">
+      <span class="scene-num blue">3</span>
+      页表与地址翻译 ★最重要
+    </div>
+    <div class="scene-body">
+      <div class="canvas">
+        <div class="canvas-label">完整地址翻译流程</div>
+        <!-- 步骤流 -->
+        <div class="flow-row" id="trans-flow">
+          <div class="flow-box" id="tf-logic">逻辑地址 1443</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-box" id="tf-decomp">页号=1, 偏移=419</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-box" id="tf-lookup">查页表[1]</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-box" id="tf-frame">帧号=5</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-box" id="tf-phys">物理地址 5539</div>
+        </div>
+        <!-- 页表 -->
+        <div style="margin-top:0.75rem;">
+          <div class="canvas-label">页表</div>
+          <table class="data-table" id="page-table">
+            <tr><th>页号</th><th>帧号</th><th>有效位</th></tr>
+            <tr data-row="0"><td>0</td><td>3</td><td>1</td></tr>
+            <tr data-row="1"><td>1</td><td>5</td><td>1</td></tr>
+            <tr data-row="2"><td>2</td><td>1</td><td>1</td></tr>
+            <tr data-row="3"><td>3</td><td>7</td><td>1</td></tr>
+            <tr data-row="4"><td>4</td><td>—</td><td>0</td></tr>
+            <tr data-row="5"><td>5</td><td>2</td><td>1</td></tr>
+            <tr data-row="6"><td>6</td><td>—</td><td>0</td></tr>
+            <tr data-row="7"><td>7</td><td>6</td><td>1</td></tr>
+          </table>
+        </div>
+        <div id="trans-calc" class="formula-box" style="margin-top:0.75rem;opacity:0;transition:opacity 0.5s ease;">
+          物理地址 = 帧号 × 页大小 + 偏移 = 5 × 1024 + 419 = <strong style="color:var(--accent);">5539</strong>
+        </div>
+      </div>
+      <div class="explanation" id="paging-trans-exp">
+        <p><span class="hl-blue">Step 1：</span>逻辑地址 1443 → 分解为页号=1，偏移=419</p>
+        <p><span class="hl-amber">Step 2：</span>查页表第1行 → 帧号=5</p>
+        <p><span class="hl-green">Step 3：</span>物理地址 = 5×1024 + 419 = <span class="hl-green">5539</span></p>
+        <div class="key-point" style="margin-top:0.5rem;">
+          <strong>关键：</strong>页表是每个进程一份的数据结构，存放在内存中。每次地址翻译需要<strong>2次访存</strong>（1次查页表 + 1次访问目标）
+        </div>
+      </div>
+    </div>
+    <div class="step-controls">
+      <button class="step-btn" onclick="scenePrev('paging-trans')">← 上一步</button>
+      <button class="step-btn primary" onclick="sceneNext('paging-trans')">下一步 →</button>
+      <button class="step-btn" id="paging-trans-auto" onclick="sceneAuto('paging-trans')">▶ 自动播放</button>
+      <span class="step-counter" id="paging-trans-counter">0 / 4</span>
+    </div>
+  </div>
+
+  <!-- 场景4：TLB快表 -->
+  <div class="scene" id="scene-paging-tlb">
+    <div class="scene-title">
+      <span class="scene-num blue">4</span>
+      TLB 快表 — 加速地址翻译
+    </div>
+    <div class="scene-body">
+      <div class="canvas">
+        <div class="canvas-label">TLB 命中 vs 未命中</div>
+        <div class="tlb-compare">
+          <div class="tlb-case" id="tlb-hit-case">
+            <div class="tlb-case-title hit">✓ TLB 命中</div>
+            <div class="flow-row">
+              <div class="flow-box" id="tlb-hit1">逻辑地址</div>
+              <span class="flow-arrow">→</span>
+              <div class="flow-box" id="tlb-hit2" style="border-color:var(--accent);">TLB</div>
+              <span class="flow-arrow">→</span>
+              <div class="flow-box" id="tlb-hit3">帧号</div>
+              <span class="flow-arrow">→</span>
+              <div class="flow-box" id="tlb-hit4">物理地址</div>
+            </div>
+            <div style="margin-top:0.5rem;font-size:0.72rem;color:var(--accent);">
+              只需 <strong>1次访存</strong>（直接访问目标内存）
+            </div>
+          </div>
+          <div class="tlb-case" id="tlb-miss-case">
+            <div class="tlb-case-title miss">✗ TLB 未命中</div>
+            <div class="flow-row">
+              <div class="flow-box" id="tlb-miss1">逻辑地址</div>
+              <span class="flow-arrow">→</span>
+              <div class="flow-box" id="tlb-miss2" style="border-color:var(--red);">TLB ✗</div>
+              <span class="flow-arrow">→</span>
+              <div class="flow-box" id="tlb-miss3" style="border-color:var(--blue);">页表</div>
+              <span class="flow-arrow">→</span>
+              <div class="flow-box" id="tlb-miss4">帧号</div>
+              <span class="flow-arrow">→</span>
+              <div class="flow-box" id="tlb-miss5">物理地址</div>
+            </div>
+            <div style="margin-top:0.5rem;font-size:0.72rem;color:var(--red);">
+              需要 <strong>2次访存</strong>（1次查页表 + 1次访问目标）
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="explanation" id="paging-tlb-exp">
+        <p><span class="hl-green">TLB（快表）</span>是页表的高速缓存，位于 CPU 内部</p>
+        <p><span class="hl-green">命中</span>时：直接获得帧号，只需 1 次访存</p>
+        <p><span class="hl-red">未命中</span>时：需先查页表再访问内存，2 次访存</p>
+        <div class="formula-box" style="margin-top:0.5rem;">
+          有效访存时间 = hit_ratio × 1 + (1 - hit_ratio) × 2<br>
+          例：命中率 90% → EAT = 0.9×1 + 0.1×2 = 1.1 次
+        </div>
+      </div>
+    </div>
+    <div class="step-controls">
+      <button class="step-btn" onclick="scenePrev('paging-tlb')">← 上一步</button>
+      <button class="step-btn primary" onclick="sceneNext('paging-tlb')">下一步 →</button>
+      <button class="step-btn" id="paging-tlb-auto" onclick="sceneAuto('paging-tlb')">▶ 自动播放</button>
+      <span class="step-counter" id="paging-tlb-counter">0 / 3</span>
+    </div>
+  </div>
+
+  <!-- 场景5：碎片特点总结 -->
+  <div class="scene" id="scene-paging-summary">
+    <div class="scene-title">
+      <span class="scene-num blue">5</span>
+      碎片特点总结
+    </div>
+    <div class="scene-body">
+      <div class="canvas">
+        <div class="canvas-label">分页存储碎片特点</div>
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+          <div style="flex:1;min-width:200px;padding:0.75rem;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;">
+            <div style="font-size:0.85rem;font-weight:700;color:var(--accent);margin-bottom:0.5rem;">✓ 无外部碎片</div>
+            <div style="font-size:0.78rem;color:var(--muted);line-height:1.7;">
+              页框大小固定，任何空闲页框都可分配给任何页，不会产生无法利用的小空闲块
+            </div>
+          </div>
+          <div style="flex:1;min-width:200px;padding:0.75rem;background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.2);border-radius:8px;">
+            <div style="font-size:0.85rem;font-weight:700;color:var(--red);margin-bottom:0.5rem;">✗ 有内部碎片</div>
+            <div style="font-size:0.78rem;color:var(--muted);line-height:1.7;">
+              进程最后一页往往未填满，剩余空间无法被其他进程使用
+            </div>
+          </div>
+        </div>
+        <div class="formula-box" style="margin-top:1rem;">
+          内部碎片 ≤ 页大小 - 1<br>
+          页越大 → 内部碎片可能越大<br>
+          页越小 → 页表越长 → 开销越大
+        </div>
+      </div>
+      <div class="explanation">
+        <p><span class="hl-green">优点：</span>无外部碎片，内存利用率高</p>
+        <p><span class="hl-red">缺点：</span>有内部碎片；页表占用内存空间</p>
+        <p><span class="hl-amber">折中：</span>页大小的选择需要在碎片和开销之间权衡</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- 第三章：分段存储管理 -->
+<!-- ================================================================ -->
+<div class="chapter" id="ch2">
+  <div class="ch-header">
+    <div class="ch-tag seg">Chapter 03</div>
+    <h2 class="ch-title">分段存储管理</h2>
+    <p class="ch-desc">按程序的逻辑结构划分段，每段独立编址，更符合程序员视角</p>
+  </div>
+
+  <!-- 场景1：核心思想 -->
+  <div class="scene" id="scene-seg-core">
+    <div class="scene-title">
+      <span class="scene-num purple">1</span>
+      核心思想 — 按程序逻辑划分
+    </div>
+    <div class="scene-body">
+      <div class="canvas">
+        <div class="canvas-label">程序逻辑视图 → 物理内存映射</div>
+        <div style="display:flex;gap:1.5rem;flex-wrap:wrap;">
+          <!-- 逻辑视图 -->
+          <div style="flex:1;min-width:200px;">
+            <div style="font-size:0.65rem;color:var(--muted);margin-bottom:4px;text-align:center;">逻辑视图</div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <div id="seg-l0" class="mem-block used c-blue entering" style="height:32px;opacity:0;transition:opacity 0.5s ease;">代码段 (1024B)</div>
+              <div id="seg-l1" class="mem-block used c-purple entering" style="height:48px;opacity:0;transition:opacity 0.5s ease;">数据段 (2048B)</div>
+              <div id="seg-l2" class="mem-block used c-cyan entering" style="height:24px;opacity:0;transition:opacity 0.5s ease;">堆段 (512B)</div>
+              <div id="seg-l3" class="mem-block used c-amber entering" style="height:64px;opacity:0;transition:opacity 0.5s ease;">栈段 (4096B)</div>
+            </div>
+          </div>
+          <!-- 箭头 -->
+          <div style="display:flex;align-items:center;font-size:1.2rem;color:var(--muted);">→</div>
+          <!-- 物理内存 -->
+          <div style="flex:1;min-width:200px;">
+            <div style="font-size:0.65rem;color:var(--muted);margin-bottom:4px;text-align:center;">物理内存</div>
+            <div style="display:flex;flex-direction:column;gap:2px;position:relative;">
+              <div id="seg-p0" class="mem-block used c-blue" style="height:32px;opacity:0;transition:opacity 0.5s ease;">代码段 @0x1000</div>
+              <div style="height:12px;background:var(--card2);border:1px dashed var(--border2);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:0.5rem;color:var(--muted);">空闲</div>
+              <div id="seg-p1" class="mem-block used c-purple" style="height:48px;opacity:0;transition:opacity 0.5s ease;">数据段 @0x3000</div>
+              <div id="seg-p3" class="mem-block used c-amber" style="height:64px;opacity:0;transition:opacity 0.5s ease;">栈段 @0x6000</div>
+              <div id="seg-p2" class="mem-block used c-cyan" style="height:24px;opacity:0;transition:opacity 0.5s ease;">堆段 @0xA000</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="explanation" id="seg-core-exp">
+        <p>程序由若干<span class="hl-purple">逻辑段</span>组成，每段长度不等</p>
+        <p>• 代码段：1024B</p>
+        <p>• 数据段：2048B</p>
+        <p>• 堆段：512B</p>
+        <p>• 栈段：4096B</p>
+        <p>各段在物理内存中<span class="hl-amber">独立放置</span>，不要求连续</p>
+      </div>
+    </div>
+    <div class="step-controls">
+      <button class="step-btn" onclick="scenePrev('seg-core')">← 上一步</button>
+      <button class="step-btn primary" onclick="sceneNext('seg-core')">下一步 →</button>
+      <button class="step-btn" id="seg-core-auto" onclick="sceneAuto('seg-core')">▶ 自动播放</button>
+      <span class="step-counter" id="seg-core-counter">0 / 5</span>
+    </div>
+  </div>
+
+  <!-- 场景2：地址结构 -->
+  <div class="scene" id="scene-seg-addr">
+    <div class="scene-title">
+      <span class="scene-num purple">2</span>
+      地址结构 — 段号 + 段内偏移
+    </div>
+    <div class="scene-body">
+      <div class="canvas">
+        <div class="canvas-label">分段逻辑地址</div>
+        <div style="margin-bottom:0.5rem;">
+          <span class="reg-label">逻辑地址：</span>
+          <span class="reg-box" style="border-color:var(--purple);color:var(--purple);">&lt;段号, 偏移&gt;</span>
+        </div>
+        <div style="display:flex;gap:1rem;margin-top:0.75rem;">
+          <div>
+            <span class="reg-label">段号：</span>
+            <span class="reg-box" id="seg-addr-num" style="border-color:var(--purple);color:var(--purple);">—</span>
+          </div>
+          <div>
+            <span class="reg-label">段内偏移：</span>
+            <span class="reg-box" id="seg-addr-off" style="border-color:var(--amber);color:var(--amber);">—</span>
+          </div>
+        </div>
+        <div id="seg-addr-example" class="formula-box purple-f" style="margin-top:0.75rem;opacity:0;transition:opacity 0.5s ease;">
+          例：&lt;2, 300&gt; → 段号为2，段内偏移300
+        </div>
+      </div>
+      <div class="explanation">
+        <p>分段地址是<span class="hl-purple">二维地址</span>：由段号和段内偏移共同确定</p>
+        <p>段号指定访问哪个段，偏移指定段内的位置</p>
+        <div class="formula-box purple-f" style="margin-top:0.5rem;">
+          逻辑地址 = &lt;段号, 段内偏移&gt;
+        </div>
+        <p style="margin-top:0.5rem;">与分页不同：分段地址需要<span class="hl-amber">用户/编译器</span>显式指定段号</p>
+      </div>
+    </div>
+    <div class="step-controls">
+      <button class="step-btn" onclick="scenePrev('seg-addr')">← 上一步</button>
+      <button class="step-btn primary" onclick="sceneNext('seg-addr')">下一步 →</button>
+      <button class="step-btn" id="seg-addr-auto" onclick="sceneAuto('seg-addr')">▶ 自动播放</button>
+      <span class="step-counter" id="seg-addr-counter">0 / 2</span>
+    </div>
+  </div>
+
+  <!-- 场景3：段表与地址翻译 -->
+  <div class="scene" id="scene-seg-trans">
+    <div class="scene-title">
+      <span class="scene-num purple">3</span>
+      段表与地址翻译 ★最重要
+    </div>
+    <div class="scene-body">
+      <div class="canvas">
+        <div class="canvas-label">分段地址翻译流程</div>
+        <div class="flow-row" id="seg-trans-flow">
+          <div class="flow-box" id="stf-logic">&lt;2, 300&gt;</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-box" id="stf-lookup">查段表[2]</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-box" id="stf-check">越界检查</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-box" id="stf-phys">物理地址</div>
+        </div>
+        <!-- 段表 -->
+        <div style="margin-top:0.75rem;">
+          <div class="canvas-label">段表</div>
+          <table class="data-table" id="seg-table">
+            <tr><th>段号</th><th>基址</th><th>限界</th></tr>
+            <tr data-row="0"><td>0</td><td>0x1000</td><td>1024</td></tr>
+            <tr data-row="1"><td>1</td><td>0x3000</td><td>2048</td></tr>
+            <tr data-row="2"><td>2</td><td>0x2000</td><td>512</td></tr>
+            <tr data-row="3"><td>3</td><td>0x6000</td><td>4096</td></tr>
+          </table>
+        </div>
+        <div id="seg-trans-calc" class="formula-box purple-f" style="margin-top:0.75rem;opacity:0;transition:opacity 0.5s ease;"></div>
+      </div>
+      <div class="explanation" id="seg-trans-exp">
+        <p><span class="hl-purple">Step 1：</span>逻辑地址 &lt;2, 300&gt; → 段号=2，偏移=300</p>
+        <p><span class="hl-amber">Step 2：</span>查段表第2行 → 基址=0x2000，限界=512</p>
+        <p><span class="hl-cyan">Step 3：</span>越界检查：300 &lt; 512 ✓</p>
+        <p><span class="hl-green">Step 4：</span>物理地址 = 0x2000 + 300 = <span class="hl-green">0x212C</span></p>
+      </div>
+    </div>
+    <div class="step-controls">
+      <button class="step-btn" onclick="scenePrev('seg-trans')">← 上一步</button>
+      <button class="step-btn primary" onclick="sceneNext('seg-trans')">下一步 →</button>
+      <button class="step-btn" id="seg-trans-auto" onclick="sceneAuto('seg-trans')">▶ 自动播放</button>
+      <span class="step-counter" id="seg-trans-counter">0 / 5</span>
+    </div>
+  </div>
+
+  <!-- 场景4：分段 vs 分页 -->
+  <div class="scene" id="scene-seg-compare">
+    <div class="scene-title">
+      <span class="scene-num purple">4</span>
+      分段 vs 分页 对比
+    </div>
+    <div class="scene-body">
+      <div class="canvas">
+        <table class="compare-table">
+          <tr>
+            <th style="color:var(--muted);">对比维度</th>
+            <th class="th-blue">分页</th>
+            <th class="th-purple">分段</th>
+          </tr>
+          <tr><td class="td-label">大小</td><td>固定（由系统决定）</td><td>可变（由程序决定）</td></tr>
+          <tr><td class="td-label">碎片</td><td style="color:var(--red);">有内部碎片</td><td style="color:var(--red);">有外部碎片</td></tr>
+          <tr><td class="td-label">地址空间</td><td>一维（单地址）</td><td>二维（段号+偏移）</td></tr>
+          <tr><td class="td-label">对程序员</td><td>透明（不可见）</td><td>可见（需指定段）</td></tr>
+          <tr><td class="td-label">共享</td><td>较难实现</td><td style="color:var(--accent);">容易（按段共享）</td></tr>
+          <tr><td class="td-label">保护</td><td>按页保护</td><td style="color:var(--accent);">按段保护（更自然）</td></tr>
+          <tr><td class="td-label">越界检查</td><td>不需要（页内偏移固定）</td><td style="color:var(--amber);">需要（偏移 &lt; 限界）</td></tr>
+        </table>
+      </div>
+      <div class="explanation">
+        <p><span class="hl-blue">分页</span>侧重于<span class="hl-blue">系统效率</span>，消除外部碎片</p>
+        <p><span class="hl-purple">分段</span>侧重于<span class="hl-purple">逻辑清晰</span>，方便共享和保护</p>
+        <div class="key-point" style="margin-top:0.5rem;">
+          <strong>记忆口诀：</strong>页固定无外碎有内碎，段可变有外碎无内碎
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 场景5：碎片特点 -->
+  <div class="scene" id="scene-seg-summary">
+    <div class="scene-title">
+      <span class="scene-num purple">5</span>
+      碎片特点
+    </div>
+    <div class="scene-body">
+      <div class="canvas">
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+          <div style="flex:1;min-width:200px;padding:0.75rem;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;">
+            <div style="font-size:0.85rem;font-weight:700;color:var(--accent);margin-bottom:0.5rem;">✓ 无内部碎片</div>
+            <div style="font-size:0.78rem;color:var(--muted);line-height:1.7;">
+              每段按实际需要分配，不会多分配多余空间
+            </div>
+          </div>
+          <div style="flex:1;min-width:200px;padding:0.75rem;background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.2);border-radius:8px;">
+            <div style="font-size:0.85rem;font-weight:700;color:var(--red);margin-bottom:0.5rem;">✗ 有外部碎片</div>
+            <div style="font-size:0.78rem;color:var(--muted);line-height:1.7;">
+              段长不等，反复分配释放后产生不连续空闲区域
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="explanation">
+        <p>分段与分页的碎片特点<span class="hl-red">正好相反</span></p>
+        <div class="formula-box purple-f" style="margin-top:0.5rem;">
+          分段：无内部碎片，有外部碎片<br>
+          分页：无外部碎片，有内部碎片
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- 第四章：段页式存储管理 -->
+<!-- ================================================================ -->
+<div class="chapter" id="ch3">
+  <div class="ch-header">
+    <div class="ch-tag segpage">Chapter 04</div>
+    <h2 class="ch-title">段页式存储管理</h2>
+    <p class="ch-desc">先分段再分页，结合两者优点：既保持逻辑清晰，又消除外部碎片</p>
+  </div>
+
+  <!-- 场景1：为什么要结合 -->
+  <div class="scene" id="scene-sp-why">
+    <div class="scene-title">
+      <span class="scene-num cyan">1</span>
+      为什么要结合
+    </div>
+    <div class="scene-body">
+      <div class="canvas">
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+          <div style="flex:1;min-width:180px;padding:0.75rem;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:8px;">
+            <div style="font-size:0.85rem;font-weight:700;color:var(--purple);margin-bottom:0.4rem;">分段的问题</div>
+            <div style="font-size:0.78rem;color:var(--muted);line-height:1.7;">
+              ✗ 有<span style="color:var(--red);">外部碎片</span><br>
+              段长不等，难以管理
+            </div>
+          </div>
+          <div style="flex:1;min-width:180px;padding:0.75rem;background:rgba(34,211,238,0.08);border:1px solid rgba(34,211,238,0.2);border-radius:8px;">
+            <div style="font-size:0.85rem;font-weight:700;color:var(--cyan);margin-bottom:0.4rem;">解决方案</div>
+            <div style="font-size:0.78rem;color:var(--muted);line-height:1.7;">
+              在每段内再<span style="color:var(--cyan);">分页</span><br>
+              用分页消除外部碎片
+            </div>
+          </div>
+          <div style="flex:1;min-width:180px;padding:0.75rem;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;">
+            <div style="font-size:0.85rem;font-weight:700;color:var(--accent);margin-bottom:0.4rem;">段页式</div>
+            <div style="font-size:0.78rem;color:var(--muted);line-height:1.7;">
+              ✓ 保持逻辑清晰<br>
+              ✓ 消除外部碎片<br>
+              ✗ 仍有内部碎片
+            </div>
+          </div>
+        </div>
+        <div class="formula-box cyan-f" style="margin-top:1rem;">
+          先分段（保持逻辑结构）→ 每段内再分页（消除外部碎片）
+        </div>
+      </div>
+      <div class="explanation">
+        <p>段页式 = <span class="hl-purple">分段</span> + <span class="hl-blue">分页</span></p>
+        <p>先按逻辑分段，再在每段内分页</p>
+        <p>每个段有自己的页表，段表记录各段页表的起始地址</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 场景2：地址结构 -->
+  <div class="scene" id="scene-sp-addr">
+    <div class="scene-title">
+      <span class="scene-num cyan">2</span>
+      地址结构 — 段号 + 页号 + 页内偏移
+    </div>
+    <div class="scene-body">
+      <div class="canvas">
+        <div class="canvas-label">段页式逻辑地址</div>
+        <div style="margin-bottom:0.5rem;">
+          <span class="reg-label">逻辑地址：</span>
+          <span class="reg-box" style="border-color:var(--cyan);color:var(--cyan);">&lt;段号, 页号, 偏移&gt;</span>
+        </div>
+        <div style="display:flex;gap:0.75rem;margin-top:0.75rem;flex-wrap:wrap;">
+          <div>
+            <span class="reg-label">段号：</span>
+            <span class="reg-box" style="border-color:var(--purple);color:var(--purple);">S</span>
+          </div>
+          <div>
+            <span class="reg-label">页号：</span>
+            <span class="reg-box" style="border-color:var(--blue);color:var(--blue);">P</span>
+          </div>
+          <div>
+            <span class="reg-label">页内偏移：</span>
+            <span class="reg-box" style="border-color:var(--accent);color:var(--accent);">d</span>
+          </div>
+        </div>
+        <div class="formula-box cyan-f" style="margin-top:1rem;">
+          逻辑地址 = 段号S + 页号P + 页内偏移d
+        </div>
+      </div>
+      <div class="explanation">
+        <p>段页式地址是<span class="hl-cyan">三维</span>的</p>
+        <p><span class="hl-purple">段号</span>确定段 → <span class="hl-blue">页号</span>确定段内页 → <span class="hl-green">偏移</span>确定页内位置</p>
+        <div class="key-point" style="margin-top:0.5rem;">
+          <strong>注意：</strong>段页式中，偏移由硬件自动分解为"页号+页内偏移"，对程序员而言地址仍为 &lt;段号, 段内偏移&gt; 形式
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 场景3：两级查表 -->
+  <div class="scene" id="scene-sp-lookup">
+    <div class="scene-title">
+      <span class="scene-num cyan">3</span>
+      两级查表 — 段表 → 页表 → 内存
+    </div>
+    <div class="scene-body">
+      <div class="canvas">
+        <div class="canvas-label">段页式地址翻译流程</div>
+        <div class="lookup-flow">
+          <div class="lookup-step" id="spl-step1">
+            <div class="lookup-box lb-purple" id="spl-s">取段号S</div>
+            <span style="color:var(--muted);">→</span>
+            <div class="lookup-box" id="spl-segtable">查段表[S]</div>
+            <span style="color:var(--muted);">→</span>
+            <div class="lookup-box lb-blue" id="spl-ptbase">页表基址</div>
+          </div>
+          <div style="color:var(--muted);">↓</div>
+          <div class="lookup-step" id="spl-step2">
+            <div class="lookup-box lb-blue" id="spl-p">取页号P</div>
+            <span style="color:var(--muted);">→</span>
+            <div class="lookup-box" id="spl-pagetable">查页表[P]</div>
+            <span style="color:var(--muted);">→</span>
+            <div class="lookup-box lb-green" id="spl-frame">帧号f</div>
+          </div>
+          <div style="color:var(--muted);">↓</div>
+          <div class="lookup-step" id="spl-step3">
+            <div class="lookup-box lb-green" id="spl-d">帧号f + 偏移d</div>
+            <span style="color:var(--muted);">→</span>
+            <div class="lookup-box lb-cyan" id="spl-phys" style="font-size:0.85rem;">物理地址</div>
+          </div>
+        </div>
+        <div id="sp-lookup-calc" class="formula-box cyan-f" style="margin-top:0.75rem;opacity:0;transition:opacity 0.5s ease;">
+          Step1: 段号S → 段表 → 页表基址<br>
+          Step2: 页号P → 页表 → 帧号f<br>
+          Step3: 物理地址 = f × 页大小 + d
+        </div>
+      </div>
+      <div class="explanation" id="sp-lookup-exp">
+        <p><span class="hl-purple">Step 1：</span>取段号，查段表 → 得到该段页表的基址</p>
+        <p><span class="hl-blue">Step 2：</span>取页号，查内层页表 → 得到帧号</p>
+        <p><span class="hl-green">Step 3：</span>帧号 + 偏移 → 物理地址</p>
+        <div class="key-point" style="margin-top:0.5rem;">
+          <strong>访存次数：</strong>段页式需要 <strong>3次访存</strong>（查段表 + 查页表 + 访问目标），TLB可加速
+        </div>
+      </div>
+    </div>
+    <div class="step-controls">
+      <button class="step-btn" onclick="scenePrev('sp-lookup')">← 上一步</button>
+      <button class="step-btn primary" onclick="sceneNext('sp-lookup')">下一步 →</button>
+      <button class="step-btn" id="sp-lookup-auto" onclick="sceneAuto('sp-lookup')">▶ 自动播放</button>
+      <span class="step-counter" id="sp-lookup-counter">0 / 3</span>
+    </div>
+  </div>
+
+  <!-- 场景4：三者对比 -->
+  <div class="scene" id="scene-sp-compare">
+    <div class="scene-title">
+      <span class="scene-num cyan">4</span>
+      三者对比总结
+    </div>
+    <div class="scene-body">
+      <div class="canvas">
+        <table class="compare-table">
+          <tr>
+            <th style="color:var(--muted);">对比维度</th>
+            <th class="th-blue">分页</th>
+            <th class="th-purple">分段</th>
+            <th class="th-cyan">段页式</th>
+          </tr>
+          <tr><td class="td-label">地址空间</td><td>一维</td><td>二维</td><td>二维</td></tr>
+          <tr><td class="td-label">块大小</td><td>固定</td><td>可变</td><td>外段内页固定</td></tr>
+          <tr><td class="td-label">外部碎片</td><td style="color:var(--accent);">无</td><td style="color:var(--red);">有</td><td style="color:var(--accent);">无</td></tr>
+          <tr><td class="td-label">内部碎片</td><td style="color:var(--red);">有</td><td style="color:var(--accent);">无</td><td style="color:var(--red);">有</td></tr>
+          <tr><td class="td-label">共享/保护</td><td>困难</td><td style="color:var(--accent);">方便</td><td style="color:var(--accent);">方便</td></tr>
+          <tr><td class="td-label">查表次数</td><td>1次(页表)</td><td>1次(段表)</td><td>2次(段+页)</td></tr>
+          <tr><td class="td-label">访存次数</td><td>2次</td><td>2次</td><td>3次</td></tr>
+          <tr><td class="td-label">对程序员</td><td>透明</td><td>可见</td><td>可见段/透明页</td></tr>
+        </table>
+      </div>
+      <div class="explanation">
+        <div class="conclusion">
+          <strong>分页</strong>效率高但缺乏逻辑性<br>
+          <strong>分段</strong>逻辑清晰但有外部碎片<br>
+          <strong>段页式</strong>兼顾两者，但查表开销更大
+        </div>
+        <div class="formula-box cyan-f" style="margin-top:0.5rem;">
+          碎片总结：<br>
+          分页：内碎✓ 外碎✗ | 分段：内碎✗ 外碎✓ | 段页式：内碎✓ 外碎✗
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+// ===== 章节切换 =====
+function switchChapter(idx) {
+  document.querySelectorAll('.chapter').forEach((ch, i) => {
+    ch.classList.toggle('active', i === idx);
+  });
+  document.querySelectorAll('.nav-chip').forEach((btn, i) => {
+    btn.classList.toggle('active', i === idx);
+  });
+}
+
+// ===== 场景步骤管理 =====
+const sceneStates = {};
+
+// 场景配置：每个场景的步骤数和渲染函数
+const sceneConfig = {
+  'extfrag': { maxStep: 4, render: renderExtFrag },
+  'intfrag': { maxStep: 2, render: renderIntFrag },
+  'paging-core': { maxStep: 8, render: renderPagingCore },
+  'paging-addr': { maxStep: 3, render: renderPagingAddr },
+  'paging-trans': { maxStep: 4, render: renderPagingTrans },
+  'paging-tlb': { maxStep: 3, render: renderPagingTlb },
+  'seg-core': { maxStep: 5, render: renderSegCore },
+  'seg-addr': { maxStep: 2, render: renderSegAddr },
+  'seg-trans': { maxStep: 5, render: renderSegTrans },
+  'sp-lookup': { maxStep: 3, render: renderSpLookup },
+};
+
+// 初始化所有场景状态
+Object.keys(sceneConfig).forEach(id => {
+  sceneStates[id] = { step: 0, timer: null };
+});
+
+function sceneNext(id) {
+  const cfg = sceneConfig[id];
+  const state = sceneStates[id];
+  if (state.step < cfg.maxStep) {
+    state.step++;
+    cfg.render(state.step);
+    updateStepUI(id);
+  }
+}
+
+function scenePrev(id) {
+  const cfg = sceneConfig[id];
+  const state = sceneStates[id];
+  if (state.step > 0) {
+    state.step--;
+    cfg.render(state.step);
+    updateStepUI(id);
+  }
+}
+
+function sceneAuto(id) {
+  const state = sceneStates[id];
+  const btn = document.getElementById(id + '-auto');
+  if (state.timer) {
+    clearInterval(state.timer);
+    state.timer = null;
+    btn.textContent = '▶ 自动播放';
+    btn.classList.remove('playing');
+    return;
+  }
+  btn.textContent = '⏸ 暂停';
+  btn.classList.add('playing');
+  state.timer = setInterval(() => {
+    const cfg = sceneConfig[id];
+    if (state.step >= cfg.maxStep) {
+      clearInterval(state.timer);
+      state.timer = null;
+      btn.textContent = '▶ 自动播放';
+      btn.classList.remove('playing');
+      return;
+    }
+    sceneNext(id);
+  }, 800);
+}
+
+function updateStepUI(id) {
+  const cfg = sceneConfig[id];
+  const state = sceneStates[id];
+  const counter = document.getElementById(id + '-counter');
+  if (counter) counter.textContent = state.step + ' / ' + cfg.maxStep;
+}
+
+// ===== 第一章：外部碎片动画 =====
+function renderExtFrag(step) {
+  const memEl = document.getElementById('extfrag-mem');
+  const infoEl = document.getElementById('extfrag-info');
+  const expEl = document.getElementById('extfrag-exp');
+
+  // 内存布局：[A:200][B:150][C:250][D:200][free:200] 总1000B
+  const layout = [
+    { id: 'A', size: 200, color: 'c-blue', label: '进程A (200B)' },
+    { id: 'B', size: 150, color: 'c-purple', label: '进程B (150B)' },
+    { id: 'C', size: 250, color: 'c-cyan', label: '进程C (250B)' },
+    { id: 'D', size: 200, color: 'c-amber', label: '进程D (200B)' },
+    { id: 'free', size: 200, color: '', label: '空闲 (200B)' },
+  ];
+
+  let html = '<div class="mem-row" style="height:44px;">';
+  layout.forEach(b => {
+    const w = (b.size / 1000 * 100).toFixed(1);
+    let cls = b.id === 'free' ? 'mem-block free' : 'mem-block used ' + b.color;
+    let extra = '';
+    let label = b.label;
+
+    if (step === 0) {
+      // 初始：全部空闲
+      cls = 'mem-block free';
+      label = '全部空闲 (1000B)';
+      html = '<div class="mem-row" style="height:44px;"><div class="mem-block free" style="flex:1;font-size:0.72rem;">全部空闲 (1000B)</div></div>';
+      // 跳出
+      memEl.innerHTML = html;
+      infoEl.innerHTML = '';
+      expEl.innerHTML = '<p>初始状态：内存全部空闲（1000B），连续可用</p><p>点击"下一步"开始分配…</p>';
+      return;
+    }
+
+    if (step >= 1) {
+      // 步骤1后：进程分配
+      if (step >= 2 && b.id === 'B') {
+        cls = 'mem-block released';
+        extra = ' style="border-color:var(--purple);flex:0 0 ' + w + '%;"';
+        label = 'B释放 (150B)';
+      } else if (step >= 3 && b.id === 'D') {
+        cls = 'mem-block released';
+        extra = ' style="border-color:var(--amber);flex:0 0 ' + w + '%;"';
+        label = 'D释放 (200B)';
+      }
+    }
+    if (b.id !== 'free') {
+      if (!extra) extra = ' style="flex:0 0 ' + w + '%;"';
+    } else {
+      extra = ' style="flex:0 0 ' + w + '%;"';
+    }
+    html += '<div class="' + cls + '"' + extra + '>' + label + '</div>';
+  });
+  html += '</div>';
+
+  // 步骤4：新进程E请求200B
+  if (step === 4) {
+    html += '<div style="margin-top:0.5rem;display:flex;gap:4px;align-items:center;">';
+    html += '<div class="mem-block free" style="flex:0 0 15%;height:28px;font-size:0.55rem;">B处150B</div>';
+    html += '<div class="mem-block free" style="flex:0 0 20%;height:28px;font-size:0.55rem;">D处200B</div>';
+    html += '<div class="mem-block free" style="flex:0 0 20%;height:28px;font-size:0.55rem;">尾部200B</div>';
+    html += '</div>';
+    html += '<div style="margin-top:0.375rem;padding:0.4rem 0.6rem;background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.3);border-radius:6px;font-size:0.72rem;color:var(--red);">进程E请求200B — 总空闲550B ≥ 200B，但无法分配！（不连续）</div>';
+  }
+
+  memEl.innerHTML = html;
+
+  // 更新说明
+  const exps = [
+    '<p>初始状态：内存全部空闲（1000B），连续可用</p><p>点击"下一步"开始分配…</p>',
+    '<p><span class="hl-blue">步骤1：</span>进程A(200B)、B(150B)、C(250B)、D(200B)依次分配</p><p>剩余空闲200B在尾部</p>',
+    '<p><span class="hl-purple">步骤2：</span>进程B释放，产生150B空闲块</p><p>此时有两块空闲：B处150B + 尾部200B</p>',
+    '<p><span class="hl-amber">步骤3：</span>进程D释放，又产生200B空闲块</p><p>此时有三块空闲：150B + 200B + 200B = 550B</p>',
+    '<p><span class="hl-red">步骤4：</span>新进程E请求200B</p><p>总空闲550B > 200B，但每块都不够大！</p><div class="key-point red-kp"><strong>外部碎片！</strong>空闲总量足够但分散，无法满足分配请求</div>',
+  ];
+  expEl.innerHTML = exps[step] || '';
+
+  const infoTexts = ['', '已分配：800B，空闲：200B', '已分配：650B，空闲：350B（不连续）', '已分配：450B，空闲：550B（3块）', '⚠ 外部碎片：无法分配200B'];
+  infoEl.innerHTML = infoTexts[step] || '';
+}
+
+// ===== 第一章：内部碎片动画 =====
+function renderIntFrag(step) {
+  const block = document.getElementById('intfrag-block');
+  const label = document.getElementById('intfrag-label');
+  const detail = document.getElementById('intfrag-detail');
+  const bar = document.getElementById('intfrag-bar');
+
+  if (step === 0) {
+    block.style.background = 'var(--card2)';
+    block.style.border = '2px dashed var(--border2)';
+    label.textContent = '空闲页框 (256B)';
+    bar.style.opacity = '0';
+    detail.style.opacity = '0';
+  } else if (step === 1) {
+    // 分配1个页框
+    block.style.background = 'linear-gradient(135deg, #3b82f6, #2563eb)';
+    block.style.border = '2px solid #3b82f6';
+    label.textContent = '页框1：使用256B / 256B';
+    bar.style.opacity = '0';
+    detail.style.opacity = '1';
+    detail.innerHTML = '请求260B → 第1个页框装满256B，还差4B';
+  } else if (step === 2) {
+    // 分配2个页框
+    block.style.background = 'linear-gradient(135deg, #3b82f6, #2563eb)';
+    block.style.border = '2px solid #3b82f6';
+    label.textContent = '共分配512B，实际需要260B';
+    bar.style.opacity = '1';
+    detail.style.opacity = '1';
+    detail.innerHTML = '第2个页框只用了4B，<span style="color:var(--red);font-weight:700;">浪费252B（内部碎片）</span>';
+  }
+}
+
+// ===== 第二章场景1：分页核心映射 =====
+function renderPagingCore(step) {
+  // 映射关系：页i → 帧[3,5,1,7,-1,2,-1,6] (4和6无效)
+  const mapping = [3, 5, 1, 7, -1, 2, -1, 6];
+  const colors = ['c-blue', 'c-purple', 'c-cyan', 'c-amber', 'c-green', 'c-red', 'c-pink', 'c-indigo'];
+  const lineColors = ['l-blue', 'l-purple', 'l-cyan', 'l-amber', 'l-green', 'l-red', 'l-pink', 'l-indigo'];
+
+  const expEl = document.getElementById('paging-core-exp');
+
+  // 激活页和帧
+  for (let i = 0; i < 8; i++) {
+    const pg = document.querySelector('[data-pg="' + i + '"]');
+    const fr = document.querySelector('[data-fr="' + i + '"]');
+    if (i <= step - 1 && mapping[i] !== -1) {
+      pg.classList.remove('dim');
+      pg.classList.add(colors[i]);
+      pg.style.background = '';
+      // 找到对应帧并着色
+      const targetFr = document.querySelector('[data-fr="' + mapping[i] + '"]');
+      targetFr.classList.remove('dim');
+      targetFr.style.background = pg.style.background || '';
+      targetFr.className = 'map-block ' + colors[i];
+      targetFr.textContent = '帧 ' + mapping[i] + ' ← 页' + i;
+    }
+  }
+
+  // 绘制映射线
+  const lineContainer = document.getElementById('paging-lines');
+  if (step > 0 && !lineContainer.querySelector('svg')) {
+    lineContainer.innerHTML = '<svg width="80" height="270" style="overflow:visible;"></svg>';
+  }
+  const svg = lineContainer.querySelector('svg');
+  if (svg) {
+    let linesHtml = '';
+    for (let i = 0; i < step; i++) {
+      if (mapping[i] === -1) continue;
+      const y1 = i * 34 + 16;
+      const y2 = mapping[i] * 34 + 16;
+      const opacity = i < step ? 1 : 0;
+      linesHtml += '<line x1="0" y1="' + y1 + '" x2="80" y2="' + y2 + '" stroke="' +
+        (i === step - 1 ? 'var(--accent)' : 'rgba(255,255,255,0.15)') +
+        '" stroke-width="' + (i === step - 1 ? 2.5 : 1.5) + '" opacity="' + opacity +
+        '" stroke-dasharray="' + (i === step - 1 ? 'none' : '4,2') + '"/>';
+    }
+    svg.innerHTML = linesHtml;
+  }
+
+  const exps = [
+    '<p>左侧为进程的 <span class="hl-blue">逻辑地址空间</span>，8个等大页</p><p>右侧为 <span class="hl-green">物理内存</span>，8个页框（帧）</p><p>点击"下一步"观察映射过程…</p>',
+    '<p><span class="hl-blue">页0</span> → 帧3</p><p>页可以在物理内存中不连续存放</p>',
+    '<p><span class="hl-purple">页1</span> → 帧5</p><p>页的顺序与帧的顺序无关</p>',
+    '<p><span class="hl-cyan">页2</span> → 帧1</p><p>这就是"非连续映射"</p>',
+    '<p><span class="hl-amber">页3</span> → 帧7</p><p>每个页可以映射到任意空闲帧</p>',
+    '<p><span class="hl-green">页4</span> → 未分配（有效位=0）</p><p>未使用的页不需要分配帧</p>',
+    '<p><span class="hl-red">页5</span> → 帧2</p><p>帧号不必与页号相同</p>',
+    '<p><span class="hl-pink">页6</span> → 未分配</p><p>页大小固定，<span class="hl-green">消除外部碎片</span></p>',
+    '<p><span class="hl-indigo">页7</span> → 帧6</p><p>映射完成！8个页中有6个被映射到帧</p><div class="key-point"><strong>分页核心：</strong>页→帧的映射是非连续的，任何空闲帧都可分配</div>',
+  ];
+  expEl.innerHTML = exps[step] || '';
+}
+
+// ===== 第二章场景2：地址结构 =====
+function renderPagingAddr(step) {
+  const binaryRow = document.getElementById('addr-binary');
+  const pageNum = document.getElementById('addr-page');
+  const offsetNum = document.getElementById('addr-offset');
+  const formula = document.getElementById('addr-formula');
+
+  // 1443 = 0000 0101 1010 0011
+  const bits = '0000010110100011'.split('');
+  const pageIdx = 6; // 高6位
+
+  if (step === 0) {
+    let html = '';
+    bits.forEach((b, i) => {
+      if (i === pageIdx) html += '<div class="binary-sep"></div>';
+      html += '<div class="binary-cell">' + b + '</div>';
+    });
+    binaryRow.innerHTML = html;
+    pageNum.textContent = '—';
+    offsetNum.textContent = '—';
+    formula.style.opacity = '0';
+  } else if (step === 1) {
+    // 高亮区分
+    let html = '';
+    bits.forEach((b, i) => {
+      if (i === pageIdx) html += '<div class="binary-sep"></div>';
+      const cls = i < pageIdx ? 'binary-cell bit-high' : 'binary-cell bit-low';
+      html += '<div class="' + cls + '">' + b + '</div>';
+    });
+    binaryRow.innerHTML = html;
+    pageNum.textContent = '—';
+    offsetNum.textContent = '—';
+    formula.style.opacity = '0';
+  } else if (step === 2) {
+    let html = '';
+    bits.forEach((b, i) => {
+      if (i === pageIdx) html += '<div class="binary-sep"></div>';
+      const cls = i < pageIdx ? 'binary-cell bit-high' : 'binary-cell bit-low';
+      html += '<div class="' + cls + '">' + b + '</div>';
+    });
+    binaryRow.innerHTML = html;
+    pageNum.textContent = '1';
+    offsetNum.textContent = '419';
+    formula.style.opacity = '0';
+  } else if (step === 3) {
+    let html = '';
+    bits.forEach((b, i) => {
+      if (i === pageIdx) html += '<div class="binary-sep"></div>';
+      const cls = i < pageIdx ? 'binary-cell bit-high' : 'binary-cell bit-low';
+      html += '<div class="' + cls + '">' + b + '</div>';
+    });
+    binaryRow.innerHTML = html;
+    pageNum.textContent = '1';
+    offsetNum.textContent = '419';
+    formula.style.opacity = '1';
+  }
+}
+
+// ===== 第二章场景3：页表地址翻译 =====
+function renderPagingTrans(step) {
+  const expEl = document.getElementById('paging-trans-exp');
+  const calcEl = document.getElementById('trans-calc');
+  const table = document.getElementById('page-table');
+
+  // 清除所有行高亮
+  table.querySelectorAll('tr').forEach(tr => {
+    tr.className = '';
+  });
+
+  // 清除所有flow-box高亮
+  ['tf-logic', 'tf-decomp', 'tf-lookup', 'tf-frame', 'tf-phys'].forEach(id => {
+    document.getElementById(id).className = 'flow-box';
+  });
+  document.querySelectorAll('#trans-flow .flow-arrow').forEach(a => a.className = 'flow-arrow');
+
+  if (step === 0) {
+    calcEl.style.opacity = '0';
+    expEl.innerHTML = '<p>逻辑地址 <span class="hl-blue">1443</span>，页大小1KB</p><p>点击"下一步"开始翻译流程…</p>';
+  } else if (step === 1) {
+    document.getElementById('tf-logic').classList.add('active-blue');
+    document.getElementById('tf-decomp').classList.add('active-blue');
+    expEl.innerHTML = '<p><span class="hl-blue">Step 1：</span>逻辑地址 1443 → 分解为页号=1，偏移=419</p><div class="formula-box">页号 = ⌊1443 / 1024⌋ = 1<br>偏移 = 1443 % 1024 = 419</div>';
+  } else if (step === 2) {
+    document.getElementById('tf-logic').classList.add('active-blue');
+    document.getElementById('tf-decomp').classList.add('active-blue');
+    document.getElementById('tf-lookup').classList.add('active-purple');
+    // 高亮页表行
+    table.querySelector('[data-row="1"]').classList.add('row-search');
+    expEl.innerHTML = '<p><span class="hl-blue">Step 1：</span>逻辑地址 1443 → 页号=1，偏移=419</p><p><span class="hl-amber">Step 2：</span>查页表第1行 → 帧号=5</p>';
+  } else if (step === 3) {
+    document.getElementById('tf-logic').classList.add('active-blue');
+    document.getElementById('tf-decomp').classList.add('active-blue');
+    document.getElementById('tf-lookup').classList.add('active-purple');
+    document.getElementById('tf-frame').classList.add('active');
+    table.querySelector('[data-row="1"]').classList.remove('row-search');
+    table.querySelector('[data-row="1"]').classList.add('row-hit');
+    expEl.innerHTML = '<p><span class="hl-blue">Step 1：</span>逻辑地址 1443 → 页号=1，偏移=419</p><p><span class="hl-amber">Step 2：</span>查页表第1行 → 帧号=5</p><p><span class="hl-green">Step 3：</span>计算物理地址…</p>';
+  } else if (step === 4) {
+    document.getElementById('tf-logic').classList.add('active-blue');
+    document.getElementById('tf-decomp').classList.add('active-blue');
+    document.getElementById('tf-lookup').classList.add('active-purple');
+    document.getElementById('tf-frame').classList.add('active');
+    document.getElementById('tf-phys').classList.add('active');
+    document.querySelectorAll('#trans-flow .flow-arrow').forEach(a => a.classList.add('active'));
+    table.querySelector('[data-row="1"]').classList.add('row-hit');
+    calcEl.style.opacity = '1';
+    expEl.innerHTML = '<p><span class="hl-blue">Step 1：</span>逻辑地址 1443 → 页号=1，偏移=419</p><p><span class="hl-amber">Step 2：</span>查页表第1行 → 帧号=5</p><p><span class="hl-green">Step 3：</span>物理地址 = 5×1024 + 419 = <span class="hl-green">5539</span></p><div class="key-point"><strong>关键：</strong>页表存放在内存中，每次翻译需2次访存</div>';
+  }
+}
+
+// ===== 第二章场景4：TLB =====
+function renderPagingTlb(step) {
+  const hitBoxes = ['tlb-hit1', 'tlb-hit2', 'tlb-hit3', 'tlb-hit4'];
+  const missBoxes = ['tlb-miss1', 'tlb-miss2', 'tlb-miss3', 'tlb-miss4', 'tlb-miss5'];
+
+  hitBoxes.forEach(id => document.getElementById(id).className = 'flow-box');
+  missBoxes.forEach(id => document.getElementById(id).className = 'flow-box');
+
+  if (step >= 1) {
+    // TLB命中动画
+    hitBoxes.forEach((id, i) => {
+      if (i < step) document.getElementById(id).classList.add('active');
+    });
+  }
+  if (step >= 2) {
+    // TLB未命中动画
+    const missStep = step - 1;
+    missBoxes.forEach((id, i) => {
+      if (i < missStep) document.getElementById(id).classList.add('active');
+    });
+  }
+}
+
+// ===== 第三章场景1：分段核心 =====
+function renderSegCore(step) {
+  const expEl = document.getElementById('seg-core-exp');
+  const segIds = ['seg-l0', 'seg-l1', 'seg-l2', 'seg-l3'];
+  const physIds = ['seg-p0', 'seg-p1', 'seg-p3', 'seg-p2'];
+  const names = ['代码段', '数据段', '堆段', '栈段'];
+
+  // 逻辑段逐步显示
+  segIds.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (i < step) {
+      el.style.opacity = '1';
+    }
+  });
+
+  // 物理映射逐步显示
+  physIds.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (i < step - 1) {
+      el.style.opacity = '1';
+    }
+  });
+
+  const exps = [
+    '<p>程序由若干<span class="hl-purple">逻辑段</span>组成，每段长度不等</p><p>• 代码段：1024B</p><p>• 数据段：2048B</p><p>• 堆段：512B</p><p>• 栈段：4096B</p><p>各段在物理内存中<span class="hl-amber">独立放置</span>，不要求连续</p>',
+    '<p><span class="hl-blue">代码段 (1024B)</span> 映射到物理地址 0x1000</p>',
+    '<p><span class="hl-purple">数据段 (2048B)</span> 映射到物理地址 0x3000</p><p>注意：不紧邻代码段！</p>',
+    '<p><span class="hl-amber">栈段 (4096B)</span> 映射到物理地址 0x6000</p><p>大段可以放在更大的空闲区</p>',
+    '<p><span class="hl-cyan">堆段 (512B)</span> 映射到物理地址 0xA000</p><p>映射顺序不必与逻辑顺序一致</p>',
+    '<p>所有段映射完成！</p><div class="key-point"><strong>分段核心：</strong>每段独立放置，大小不等，方便共享和保护</div>',
+  ];
+  expEl.innerHTML = exps[step] || '';
+}
+
+// ===== 第三章场景2：分段地址 =====
+function renderSegAddr(step) {
+  const numEl = document.getElementById('seg-addr-num');
+  const offEl = document.getElementById('seg-addr-off');
+  const exEl = document.getElementById('seg-addr-example');
+
+  if (step === 0) {
+    numEl.textContent = '—';
+    offEl.textContent = '—';
+    exEl.style.opacity = '0';
+  } else if (step === 1) {
+    numEl.textContent = '2';
+    offEl.textContent = '300';
+    exEl.style.opacity = '0';
+  } else if (step === 2) {
+    numEl.textContent = '2';
+    offEl.textContent = '300';
+    exEl.style.opacity = '1';
+  }
+}
+
+// ===== 第三章场景3：段表地址翻译 =====
+function renderSegTrans(step) {
+  const expEl = document.getElementById('seg-trans-exp');
+  const calcEl = document.getElementById('seg-trans-calc');
+  const table = document.getElementById('seg-table');
+
+  table.querySelectorAll('tr').forEach(tr => tr.className = '');
+  ['stf-logic', 'stf-lookup', 'stf-check', 'stf-phys'].forEach(id => {
+    document.getElementById(id).className = 'flow-box';
+  });
+
+  if (step === 0) {
+    calcEl.style.opacity = '0';
+    calcEl.innerHTML = '';
+    expEl.innerHTML = '<p>逻辑地址 &lt;2, 300&gt;</p><p>点击"下一步"开始翻译…</p>';
+  } else if (step === 1) {
+    document.getElementById('stf-logic').classList.add('active-purple');
+    expEl.innerHTML = '<p><span class="hl-purple">Step 1：</span>逻辑地址 &lt;2, 300&gt; → 段号=2，偏移=300</p>';
+  } else if (step === 2) {
+    document.getElementById('stf-logic').classList.add('active-purple');
+    document.getElementById('stf-lookup').classList.add('active-purple');
+    table.querySelector('[data-row="2"]').classList.add('row-search');
+    expEl.innerHTML = '<p><span class="hl-purple">Step 1：</span>逻辑地址 &lt;2, 300&gt; → 段号=2，偏移=300</p><p><span class="hl-amber">Step 2：</span>查段表第2行 → 基址=0x2000，限界=512</p>';
+  } else if (step === 3) {
+    document.getElementById('stf-logic').classList.add('active-purple');
+    document.getElementById('stf-lookup').classList.add('active-purple');
+    document.getElementById('stf-check').classList.add('active');
+    table.querySelector('[data-row="2"]').classList.remove('row-search');
+    table.querySelector('[data-row="2"]').classList.add('row-hit');
+    calcEl.style.opacity = '1';
+    calcEl.innerHTML = '越界检查：偏移 300 &lt; 限界 512 → <strong style="color:var(--accent);">✓ 通过</strong>';
+    expEl.innerHTML = '<p><span class="hl-purple">Step 1：</span>逻辑地址 &lt;2, 300&gt; → 段号=2，偏移=300</p><p><span class="hl-amber">Step 2：</span>查段表第2行 → 基址=0x2000，限界=512</p><p><span class="hl-cyan">Step 3：</span>越界检查 300 &lt; 512 ✓</p>';
+  } else if (step === 4) {
+    document.getElementById('stf-logic').classList.add('active-purple');
+    document.getElementById('stf-lookup').classList.add('active-purple');
+    document.getElementById('stf-check').classList.add('active');
+    document.getElementById('stf-phys').classList.add('active');
+    table.querySelector('[data-row="2"]').classList.add('row-hit');
+    calcEl.innerHTML = '越界检查：偏移 300 &lt; 限界 512 → ✓ 通过<br>物理地址 = 0x2000 + 300 = <strong style="color:var(--accent);">0x212C</strong>';
+    expEl.innerHTML = '<p><span class="hl-purple">Step 1：</span>逻辑地址 &lt;2, 300&gt; → 段号=2，偏移=300</p><p><span class="hl-amber">Step 2：</span>查段表第2行 → 基址=0x2000，限界=512</p><p><span class="hl-cyan">Step 3：</span>越界检查 300 &lt; 512 ✓</p><p><span class="hl-green">Step 4：</span>物理地址 = 0x2000 + 300 = <span class="hl-green">0x212C</span></p>';
+  } else if (step === 5) {
+    // 越界情况
+    document.getElementById('stf-logic').classList.add('active-purple');
+    document.getElementById('stf-lookup').classList.add('active-purple');
+    document.getElementById('stf-check').style.borderColor = 'var(--red)';
+    document.getElementById('stf-check').style.color = 'var(--red)';
+    document.getElementById('stf-check').textContent = '越界！';
+    table.querySelector('[data-row="2"]').classList.add('row-error');
+    calcEl.innerHTML = '越界演示：若偏移=600 → 600 ≥ 限界512 → <strong style="color:var(--red);">✗ 越界中断！</strong>';
+    expEl.innerHTML = '<p><span class="hl-red">越界演示：</span>若偏移=600</p><p>600 ≥ 限界512 → <span class="hl-red">越界中断</span></p><div class="key-point red-kp"><strong>越界保护：</strong>分段的限界检查可以防止非法访问</div>';
+  }
+}
+
+// ===== 第四章场景3：段页式查表 =====
+function renderSpLookup(step) {
+  const expEl = document.getElementById('sp-lookup-exp');
+  const calcEl = document.getElementById('sp-lookup-calc');
+  const steps = ['spl-step1', 'spl-step2', 'spl-step3'];
+
+  steps.forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.classList.remove('active', 'done');
+    if (i < step) el.classList.add('done');
+    if (i === step - 1) { el.classList.add('active'); el.classList.remove('done'); }
+  });
+
+  if (step === 0) {
+    calcEl.style.opacity = '0';
+  } else {
+    calcEl.style.opacity = '1';
+  }
+
+  const exps = [
+    '<p><span class="hl-purple">Step 1：</span>取段号，查段表 → 得到页表基址</p><p><span class="hl-blue">Step 2：</span>取页号，查内层页表 → 得到帧号</p><p><span class="hl-green">Step 3：</span>帧号 + 偏移 → 物理地址</p>',
+    '<p><span class="hl-purple">Step 1：</span>取段号S，查段表[S] → 得到该段的<span class="hl-blue">页表基址</span></p><p>还需进行段长越界检查</p>',
+    '<p><span class="hl-purple">Step 1：</span>查段表 → 页表基址 ✓</p><p><span class="hl-blue">Step 2：</span>取页号P，查页表[P] → 得到<span class="hl-green">帧号f</span></p>',
+    '<p><span class="hl-purple">Step 1：</span>查段表 → 页表基址 ✓</p><p><span class="hl-blue">Step 2：</span>查页表 → 帧号f ✓</p><p><span class="hl-green">Step 3：</span>物理地址 = f × 页大小 + d</p><div class="key-point"><strong>访存次数：</strong>段页式需要3次访存（段表+页表+目标），TLB可加速</div>',
+  ];
+  expEl.innerHTML = exps[step] || '';
+}
+
+// ===== 初始化 =====
+document.addEventListener('DOMContentLoaded', () => {
+  // 初始化外部碎片场景
+  renderExtFrag(0);
+  updateStepUI('extfrag');
+  renderIntFrag(0);
+  updateStepUI('intfrag');
+  renderPagingAddr(0);
+  updateStepUI('paging-addr');
+  renderPagingTrans(0);
+  updateStepUI('paging-trans');
+  renderPagingTlb(0);
+  updateStepUI('paging-tlb');
+  renderSegAddr(0);
+  updateStepUI('seg-addr');
+  renderSegTrans(0);
+  updateStepUI('seg-trans');
+  renderSpLookup(0);
+  updateStepUI('sp-lookup');
+
+  // 分页核心场景初始化
+  updateStepUI('paging-core');
+  // 分段核心场景初始化
+  updateStepUI('seg-core');
+});
+</script>
+</body>
+</html>
