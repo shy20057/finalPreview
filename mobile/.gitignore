@@ -1,0 +1,11 @@
+unpackage/
+node_modules/
+.npm-cache/
+.fonttmp/
+.shots/
+.hbuilderx/
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
+*.local.json

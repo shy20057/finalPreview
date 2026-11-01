@@ -1,0 +1,24 @@
+{
+  "pages": [
+    { "path": "pages/index/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/auth/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/banks/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/quiz/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/result/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/history/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/wrongbook/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/favorites/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/resources/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/settings/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/profile/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/notes/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/quiz-notes/index", "style": { "navigationStyle": "custom" } }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "期末复习",
+    "navigationBarBackgroundColor": "#0d0e1a",
+    "backgroundColor": "#0d0e1a",
+    "backgroundTextStyle": "light"
+  }
+}

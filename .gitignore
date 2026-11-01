@@ -8,6 +8,7 @@ dist-ssr/
 .DS_Store
 *.log
 .npm
+.verification/
 .eslintcache
 .vite/
 .vercel

@@ -10,6 +10,8 @@
 
 FinalPrep 是一个基于 Vue 3 + Express.js 构建的在线练习与考试系统，支持单选题、多选题、填空题等多种题型，提供练习模式和考试模式，帮助学生高效完成期末复习。
 
+移动端迁移工程位于 [`mobile/`](mobile/)，采用 uni-app Vue 3，当前按方案 A 逐页还原原网页，首要目标为 Android。请用 HBuilderX 单独导入 `mobile/`；环境配置、模拟器运行和待验证清单见[移动端指南](docs/mobile/README.md)。已完成源码迁移、原网页与移动端资源构建，并在 Android 模拟器中完成登录、四种题型交卷和笔记保存验证；当前像素级一致性仍在验收，详细证据见[验证记录](docs/mobile/VERIFICATION.md)。从网页工程到 uni-app 具体改了什么，见[迁移说明](docs/mobile/MIGRATION.md)。所有文档索引见 [docs/](docs/README.md)。
+
 ![首页](screenshots/home.png)
 
 ---
@@ -85,16 +87,18 @@ FinalPrep 是一个基于 Vue 3 + Express.js 构建的在线练习与考试系�
 ## 技术架构
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                        Frontend                          │
-│           Vue 3 + Pinia + Vue Router + Vite             │
-└─────────────────────────────────────────────────────────┘
-                              │
+┌──────────────────────────────┐   ┌──────────────────────────────┐
+│         Web Frontend        │   │       Mobile (uni-app)       │
+│  Vue 3 + Pinia + Router     │   │  Vue 3 + Pinia + App-Vue     │
+│          + Vite             │   │   (目标平台：Android)        │
+└──────────────┬───────────────┘   └──────────────┬───────────────┘
+               │                                  │
+               └──────────────┬───────────────────┘
                               ▼
-┌─────────────────────────────────────────────────────────┐
-│                         Backend                          │
-│            Express.js + SQLite (node:sqlite)            │
-└─────────────────────────────────────────────────────────┘
+               ┌──────────────────────────────┐
+               │          Backend             │
+               │  Express.js + SQLite (node:sqlite) │
+               └──────────────────────────────┘
 ```
 
 ### 技术栈
@@ -120,13 +124,12 @@ FinalPrep 是一个基于 Vue 3 + Express.js 构建的在线练习与考试系�
 ```
 FinalPrep/
 ├── public/                    # 静态资源
-│   ├── banks/                 # 内置题库文件
 │   ├── assets/images/         # 图片资源
-│   └── resources/             # 学习资料
+│   └── resources/             # 学习资料（后端按 /resources 提供）
 ├── server/                    # 后端服务
 │   ├── data/                  # SQLite 数据库
 │   └── server.js              # Express 服务入口
-├── src/                       # 前端源代码
+├── src/                       # 网页前端源代码
 │   ├── components/            # Vue 组件
 │   │   ├── notes/             # 笔记相关组件
 │   │   └── wrongbook/         # 错题本组件
@@ -134,6 +137,14 @@ FinalPrep/
 │   ├── views/                 # 页面视图
 │   ├── utils/                 # 工具函数
 │   └── router/                # 路由配置
+├── mobile/                    # uni-app 移动端（App-Vue，目标 Android）
+│   ├── pages/                 # 13 个页面
+│   ├── components/            # 组件（含 6 个 renderjs 视图层组件）
+│   ├── stores/ utils/ styles/ # Store、平台适配层、设计系统
+│   └── tests/                 # 逻辑用例
+├── docs/                      # 文档（索引见 docs/README.md）
+│   └── mobile/                # 移动端：指南、迁移说明、约定、验证、实验报告
+├── tests/                     # 网页端逻辑用例
 ├── screenshots/               # 界面截图
 └── vite.config.js             # Vite 配置
 ```
