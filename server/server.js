@@ -6,6 +6,7 @@ import fs from 'fs'
 import { fileURLToPath } from 'url'
 import { deleteQuizNotesByIds } from './quizNotes.js'
 import { migrateUserIsolation } from './userIsolation.js'
+import { migrateMobileCompatibility, decodeHistory, saveHistoryRecord } from './mobileCompatibility.js'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import { randomBytes } from 'node:crypto'
@@ -160,6 +161,7 @@ db.exec(`
 
 // Add ownership and account-scoped constraints to older databases.
 migrateUserIsolation(db)
+migrateMobileCompatibility(db)
 
 const app = express()
 app.use(cors())
@@ -266,29 +268,12 @@ app.put('/api/banks/:id', authMiddleware, (req, res) => {
 app.get('/api/history', authMiddleware, (req, res) => {
   const stmt = db.prepare('SELECT * FROM history WHERE userId = ? ORDER BY date DESC')
   const rows = stmt.all(req.userId)
-  const records = rows.map(r => ({
-    ...r,
-    answers: r.answers ? JSON.parse(r.answers) : {},
-    wrongQuestionIds: r.wrongQuestionIds ? JSON.parse(r.wrongQuestionIds) : [],
-    wrongQuestions: r.wrongQuestions ? JSON.parse(r.wrongQuestions) : [],
-  }))
+  const records = rows.map(decodeHistory)
   res.json(records)
 })
 
 app.post('/api/history', authMiddleware, (req, res) => {
-  const { bankId, bankName, mode, score, correctCount, wrongCount, totalQuestions, duration, answers, wrongQuestionIds, wrongQuestions } = req.body
-  const stmt = db.prepare(`
-    INSERT INTO history (bankId, bankName, mode, score, correctCount, wrongCount, totalQuestions, duration, answers, wrongQuestionIds, wrongQuestions, userId)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `)
-  const result = stmt.run(
-    bankId, bankName, mode, score, correctCount, wrongCount, totalQuestions, duration,
-    JSON.stringify(answers || {}),
-    JSON.stringify(wrongQuestionIds || []),
-    JSON.stringify(wrongQuestions || []),
-    req.userId
-  )
-  res.json({ id: result.lastInsertRowid, ...req.body, date: new Date().toISOString() })
+  res.json(saveHistoryRecord(db, req.userId, req.body))
 })
 
 app.delete('/api/history/:id', authMiddleware, (req, res) => {
@@ -370,16 +355,12 @@ app.get('/api/favorites/:bankId/:questionId', authMiddleware, (req, res) => {
 
 app.get('/api/export', authMiddleware, (req, res) => {
   const banks = db.prepare('SELECT * FROM banks WHERE userId = ?').all(req.userId).map(r => ({ ...r, questions: JSON.parse(r.questions) }))
-  const history = db.prepare('SELECT * FROM history WHERE userId = ?').all(req.userId).map(r => ({
-    ...r,
-    answers: r.answers ? JSON.parse(r.answers) : {},
-    wrongQuestionIds: r.wrongQuestionIds ? JSON.parse(r.wrongQuestionIds) : [],
-    wrongQuestions: r.wrongQuestions ? JSON.parse(r.wrongQuestions) : [],
-  }))
+  const history = db.prepare('SELECT * FROM history WHERE userId = ?').all(req.userId).map(decodeHistory)
   const notes = db.prepare('SELECT * FROM notes WHERE userId = ?').all(req.userId)
+  const noteTree = db.prepare('SELECT * FROM note_tree WHERE userId = ? ORDER BY sort_order ASC, id ASC').all(req.userId)
   const aiConfigs = db.prepare('SELECT * FROM ai_configs WHERE userId = ?').all(req.userId)
   const favorites = db.prepare('SELECT * FROM favorites WHERE userId = ?').all(req.userId).map(r => ({ ...r, questionData: JSON.parse(r.questionData) }))
-  res.json({ banks, history, notes, aiConfigs, favorites, exportedAt: new Date().toISOString() })
+  res.json({ banks, history, notes, noteTree, aiConfigs, favorites, exportedAt: new Date().toISOString() })
 })
 
 app.post('/api/import', authMiddleware, (req, res) => {
@@ -397,8 +378,8 @@ app.post('/api/import', authMiddleware, (req, res) => {
   if (history && Array.isArray(history)) {
     db.prepare('DELETE FROM history WHERE userId = ?').run(req.userId)
     const stmt = db.prepare(`
-      INSERT INTO history (bankId, bankName, mode, score, correctCount, wrongCount, totalQuestions, duration, answers, wrongQuestionIds, wrongQuestions, date, userId)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO history (bankId, bankName, mode, score, correctCount, wrongCount, totalQuestions, duration, answers, wrongQuestionIds, wrongQuestions, date, userId, submissionId, questionSnapshot)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     for (const h of history) {
       stmt.run(
@@ -408,7 +389,9 @@ app.post('/api/import', authMiddleware, (req, res) => {
         JSON.stringify(h.wrongQuestionIds || []),
         JSON.stringify(h.wrongQuestions || []),
         h.date,
-        req.userId
+        req.userId,
+        typeof h.submissionId === 'string' ? h.submissionId : null,
+        Array.isArray(h.questions) ? JSON.stringify(h.questions) : h.questionSnapshot || null
       )
     }
   }
@@ -787,6 +770,8 @@ app.get('/api/sessions', authMiddleware, (req, res) => {
     shuffled: !!row.shuffled,
     startTime: row.start_time,
     wrongIds: row.wrong_ids ? JSON.parse(row.wrong_ids) : [],
+    submitted: row.submitted_ids ? JSON.parse(row.submitted_ids) : null,
+    submissionId: row.submission_id || null,
     updatedAt: row.updated_at,
   })))
 })
@@ -804,18 +789,20 @@ app.get('/api/sessions/:bankId', authMiddleware, (req, res) => {
     shuffled: !!row.shuffled,
     startTime: row.start_time,
     wrongIds: row.wrong_ids ? JSON.parse(row.wrong_ids) : [],
+    submitted: row.submitted_ids ? JSON.parse(row.submitted_ids) : null,
+    submissionId: row.submission_id || null,
     updatedAt: row.updated_at,
   })
 })
 
 // PUT /api/sessions - upsert session
 app.put('/api/sessions', authMiddleware, (req, res) => {
-  const { bankId, questionOrder, answers, currentIndex, mode, shuffled, startTime, wrongIds } = req.body
+  const { bankId, questionOrder, answers, currentIndex, mode, shuffled, startTime, wrongIds, submitted, submissionId } = req.body
   if (!bankId) return res.status(400).json({ error: 'bankId is required' })
   const now = new Date().toISOString()
   const stmt = db.prepare(`
-    INSERT INTO quiz_sessions (bank_id, question_order, answers, current_index, mode, shuffled, start_time, wrong_ids, updated_at, userId)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO quiz_sessions (bank_id, question_order, answers, current_index, mode, shuffled, start_time, wrong_ids, updated_at, userId, submitted_ids, submission_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(userId, bank_id) DO UPDATE SET
       question_order = excluded.question_order,
       answers = excluded.answers,
@@ -824,7 +811,9 @@ app.put('/api/sessions', authMiddleware, (req, res) => {
       shuffled = excluded.shuffled,
       start_time = excluded.start_time,
       wrong_ids = excluded.wrong_ids,
-      updated_at = excluded.updated_at
+      updated_at = excluded.updated_at,
+      submitted_ids = excluded.submitted_ids,
+      submission_id = excluded.submission_id
   `)
   stmt.run(
     String(bankId),
@@ -836,7 +825,9 @@ app.put('/api/sessions', authMiddleware, (req, res) => {
     startTime || Date.now(),
     JSON.stringify(wrongIds || []),
     now,
-    req.userId
+    req.userId,
+    Array.isArray(submitted) ? JSON.stringify(submitted) : null,
+    typeof submissionId === 'string' ? submissionId.slice(0, 160) : null
   )
   res.json({ success: true, updatedAt: now })
 })

@@ -1,0 +1,1049 @@
+<template>
+  <AppShell>
+  <view class="home-view">
+    <!-- Asymmetric Hero -->
+    <view class="hero">
+      <view class="hero-left">
+        <view class="hero-eyebrow animate-fadeIn stagger-1">
+          <text class="badge badge-accent">
+            <AppIcon name="i7ea45c6f" :size="12" />
+            期末复习系统
+          </text>
+        </view>
+        <view class="web-h1 hero-title animate-fadeIn stagger-2">高效复习<view class="web-br" /><text class="text-accent">轻松备考</text></view>
+        <view class="web-p hero-desc text-secondary animate-fadeIn stagger-3">
+          覆盖多学科的智能练习系统，支持练习模式与模拟考试，助你查漏补缺、胸有成竹。
+        </view>
+        <view class="hero-cta animate-fadeIn stagger-4">
+          <button class="web-button btn btn-primary btn-lg" @click="goToPractice">
+            <AppIcon name="i5d92e53f" :size="18" />
+            开始练习
+          </button>
+          <button class="web-button btn btn-secondary btn-lg" @click="router.push('/banks')">
+            <AppIcon name="ic562aa1f" :size="18" />
+            管理题库
+          </button>
+        </view>
+      </view>
+      <view class="hero-right animate-fadeIn stagger-3">
+        <view class="hero-illustration">
+          <!-- 装饰光点 -->
+          <view class="hero-sparkle hero-sparkle-1"></view>
+          <view class="hero-sparkle hero-sparkle-2"></view>
+          <view class="hero-sparkle hero-sparkle-3"></view>
+
+          <view class="hero-card-stack">
+            <!-- 底层：书本 -->
+            <view class="hero-card hero-card-back">
+              <AppIcon name="i5fc950b6" :size="36" class="text-muted" />
+              <text class="hero-card-label">智能题库</text>
+            </view>
+            <!-- 中层：对勾 -->
+            <view class="hero-card hero-card-mid">
+              <AppIcon name="ie96653ae" :size="30" style="color: var(--success)" />
+              <text class="hero-card-label" style="color: var(--success)">即时判分</text>
+            </view>
+            <!-- 前层：AI 解析 -->
+            <view class="hero-card hero-card-front">
+              <view class="hero-card-glow"></view>
+              <view class="hero-card-content">
+                <AppIcon name="i72bff5e5" :size="26" style="color: var(--accent-primary)" />
+                <text class="hero-card-label" style="color: var(--accent-primary)">AI 解析</text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 浮动徽章 -->
+          <view class="hero-float-badge">
+            <view class="badge-icon">
+              <AppIcon name="ic562aa1f" :size="16" />
+            </view>
+            <view class="badge-text">
+              <text class="badge-num">{{ bankStore.allBanks.length }}</text>
+              <text class="badge-label">题库已就绪</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- Mode Cards — asymmetric grid -->
+    <view class="mode-section">
+      <view class="section-label animate-fadeIn stagger-2">
+        <text class="text-muted text-sm font-medium">选择学习方式</text>
+      </view>
+      <view class="mode-cards">
+        <view class="mode-card card card-hover animate-slideInUp stagger-3" @click="goToPractice">
+          <view class="mode-icon" style="color: var(--accent-primary)">
+            <AppIcon name="i02ecf1fa" :size="28" />
+          </view>
+          <view class="mode-info">
+            <view class="web-h3">练习模式</view>
+            <view class="web-p text-muted text-sm">逐题练习，即时判分</view>
+          </view>
+          <view class="mode-arrow">
+            <AppIcon name="i969f20dd" :size="16" />
+          </view>
+        </view>
+        <view class="mode-card card card-hover animate-slideInUp stagger-4" @click="goToExam">
+          <view class="mode-icon" style="color: var(--warning)">
+            <AppIcon name="i1f75c96d" :size="28" />
+          </view>
+          <view class="mode-info">
+            <view class="web-h3">模拟考试</view>
+            <view class="web-p text-muted text-sm">随机出题，模拟实战</view>
+          </view>
+          <view class="mode-arrow">
+            <AppIcon name="i969f20dd" :size="16" />
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- Continue Practice Section -->
+    <view v-if="recentSessions.length > 0" class="continue-section animate-fadeIn">
+      <view class="section-header">
+        <view class="web-h2 section-title">
+          <AppIcon name="i3ebbb4a8" :size="16" style="display: inline; vertical-align: -2px; margin-right: 6px;" />
+          继续练习
+        </view>
+      </view>
+      <view class="filmstrip">
+        <view
+          v-for="(session, index) in recentSessions"
+          :key="session.bankId"
+          class="film-frame card animate-slideInUp"
+          :class="`stagger-${index + 1}`"
+          @click="resumeSession(session)"
+        >
+          <!-- Sprocket holes left -->
+          <view class="sprockets sprockets-left">
+            <text v-for="n in 4" :key="n" class="sprocket-hole"></text>
+          </view>
+          <!-- Film content -->
+          <view class="film-content">
+            <view class="film-number">{{ String(index + 1).padStart(2, '0') }}</view>
+            <view class="film-title">{{ session.bankName }}</view>
+            <view class="film-meta">{{ session.subject || '未分类' }}</view>
+            <view class="film-progress-wrap">
+              <view class="film-progress-bar">
+                <view class="film-progress-fill" :style="{ width: session.progressPercent + '%' }"></view>
+              </view>
+              <text class="film-progress-text">{{ session.answeredCount }}/{{ session.totalQuestions }}</text>
+            </view>
+          </view>
+          <!-- Sprocket holes right -->
+          <view class="sprockets sprockets-right">
+            <text v-for="n in 4" :key="n" class="sprocket-hole"></text>
+          </view>
+          <!-- Grain overlay -->
+          <view class="film-grain"></view>
+        </view>
+      </view>
+    </view>
+
+    <!-- All Banks -->
+    <view class="all-banks-section animate-fadeIn">
+      <view class="section-header">
+        <view class="web-h2 section-title">
+          <AppIcon name="i62a5bea7" :size="16" style="display: inline; vertical-align: -2px; margin-right: 6px;" />
+          系统题库
+        </view>
+        <button class="web-button btn btn-primary btn-sm" @click="bankStore.openImportModal">
+          <AppIcon name="iebefd945" :size="14" />
+          导入题库
+        </button>
+      </view>
+
+      <!-- 骨架屏 -->
+      <view v-if="loading" class="bank-grid">
+        <view v-for="i in 4" :key="i" class="skeleton-bank-card card">
+          <view class="bank-header">
+            <view class="skeleton skeleton-title"></view>
+            <view class="skeleton" style="width: 48px; height: 20px; border-radius: 999px;"></view>
+          </view>
+          <view class="skeleton skeleton-text" style="width: 40%;"></view>
+          <view class="bank-meta">
+            <view class="skeleton skeleton-text" style="width: 30%;"></view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 空状态 -->
+      <view v-else-if="bankStore.allBanks.length === 0" class="empty-state card">
+        <view class="empty-state-icon">
+          <AppIcon name="i3258529d" :size="32" />
+        </view>
+        <view class="web-p text-muted">暂无题库</view>
+        <button class="web-button btn btn-primary" @click="bankStore.openImportModal">导入题库</button>
+      </view>
+
+      <!-- 有题库：学科Tab + 卡片网格 -->
+      <template v-else>
+        <view class="subject-tabs">
+          <button
+            v-for="subject in bankStore.subjects"
+            :key="subject"
+            class="web-button subject-tab"
+            :class="{ active: bankStore.selectedSubject === subject }"
+            @click="bankStore.selectedSubject = subject"
+          >
+            {{ subject }}
+            <text class="tab-count">{{ subject === '全部' ? bankStore.allBanks.length : (bankStore.banksBySubject[subject]?.length || 0) }}</text>
+          </button>
+        </view>
+
+        <view v-if="bankStore.filteredBanks.length === 0" class="empty-state card">
+          <view class="web-p text-muted">该学科暂无题库</view>
+        </view>
+
+        <view v-else class="bank-grid">
+          <view
+            v-for="(bank, index) in bankStore.filteredBanks"
+            :key="bank.id"
+            class="bank-card card card-hover animate-slideInUp"
+            :class="`stagger-${(index % 6) + 1}`"
+            @click="startBank(bank)"
+          >
+            <view class="bank-header">
+              <view class="web-h3">{{ bank.name }}</view>
+              <text v-if="bank.builtin" class="badge badge-success">内置</text>
+              <text v-else class="badge badge-accent">用户</text>
+            </view>
+            <view class="web-p text-muted text-sm">{{ bank.subject || '未分类' }}</view>
+            <view class="bank-meta">
+              <text class="text-muted text-xs">{{ bank.questions?.length || 0 }} 题 · {{ getTypeSummary(bank) }}</text>
+            </view>
+          </view>
+        </view>
+      </template>
+    </view>
+
+    <ImportModal
+      v-if="bankStore.importModalOpen"
+      @close="bankStore.closeImportModal"
+      @import="handleImport"
+    />
+  </view>
+
+  </AppShell>
+</template>
+
+<script setup>
+import { onPageReady } from '../../composables/usePageReady.js'
+
+import AppShell from '../../components/AppShell.vue'
+
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from '@/utils/router.js'
+import { useBankStore } from '../../stores/bank.js'
+import { useQuizStore } from '../../stores/quiz.js'
+import { getSessionsWithBankInfo } from '../../utils/storage.js'
+import ImportModal from '../../components/ImportModal.vue'
+
+const router = useRouter()
+const bankStore = useBankStore()
+const quizStore = useQuizStore()
+const loading = ref(true)
+const recentSessions = ref([])
+
+const recentBanks = computed(() => {
+  return bankStore.allBanks.slice(0, 4)
+})
+
+function getTypeSummary(bank) {
+  if (!bank.questions) return ''
+  const s = bank.questions.filter(q => q.type === 'single').length
+  const f = bank.questions.filter(q => q.type === 'fill').length
+  const parts = []
+  if (s) parts.push(`${s}单选`)
+  if (f) parts.push(`${f}填空`)
+  return parts.join(' · ')
+}
+
+function startBank(bank) {
+  bankStore.selectBank(bank)
+  router.push(`/quiz/${bank.id}`)
+}
+
+function goToPractice() {
+  if (bankStore.filteredBanks.length > 0) {
+    const bank = bankStore.filteredBanks[0]
+    bankStore.selectBank(bank)
+    quizStore.setMode('practice')
+    router.push(`/quiz/${bank.id}`)
+  } else {
+    bankStore.openImportModal()
+  }
+}
+
+function goToExam() {
+  if (bankStore.filteredBanks.length > 0) {
+    const bank = bankStore.filteredBanks[0]
+    bankStore.selectBank(bank)
+    quizStore.setMode('exam')
+    router.push(`/quiz/${bank.id}`)
+  } else {
+    bankStore.openImportModal()
+  }
+}
+
+async function handleImport(bankData) {
+  const newBank = await bankStore.addBank(bankData)
+  bankStore.closeImportModal()
+  bankStore.selectBank(newBank)
+  router.push(`/quiz/${newBank.id}`)
+}
+
+onPageReady(async () => {
+  await bankStore.loadBuiltinBanks()
+  await bankStore.loadUserBanks()
+  // Load recent sessions with bank info
+  try {
+    recentSessions.value = await getSessionsWithBankInfo()
+  } catch (e) {
+    console.error('加载最近练习失败:', e)
+  }
+  loading.value = false
+})
+
+async function resumeSession(session) {
+  // Pre-select bank so QuizView can find it on load
+  let bank = bankStore.allBanks.find(b => String(b.id) === String(session.bankId))
+  if (!bank) {
+    // Fallback: try user banks
+    const userBanks = await bankStore.loadUserBanks()
+    bank = bankStore.allBanks.find(b => String(b.id) === String(session.bankId))
+  }
+  if (bank) {
+    bankStore.selectBank(bank)
+    quizStore.setMode(session.mode || 'practice')
+  }
+  router.push(`/quiz/${session.bankId}`)
+}
+</script>
+
+<style scoped>
+.home-view {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+/* ===== Asymmetric Hero ===== */
+.hero {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 3rem;
+  align-items: center;
+  padding: 1rem 0;
+}
+
+.hero-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.hero-eyebrow {
+  margin-bottom: -0.25rem;
+}
+
+.hero-title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+}
+
+.hero-desc {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  max-width: 42ch;
+}
+
+.hero-cta {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+/* Illustration */
+.hero-right {
+  display: flex;
+  justify-content: center;
+}
+
+.hero-illustration {
+  position: relative;
+  width: 280px;
+  height: 200px;
+}
+
+.hero-card-stack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  animation: hero-stack-float 6s ease-in-out infinite;
+}
+
+@keyframes hero-stack-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+
+.hero-card {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.hero-card-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.hero-card-back {
+  width: 190px;
+  height: 140px;
+  background: linear-gradient(135deg, var(--bg-surface-raised), var(--bg-surface));
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  top: 15px;
+  left: 35px;
+  transform: rotate(-8deg);
+  animation: hero-card-back-sway 8s ease-in-out infinite;
+}
+
+@keyframes hero-card-back-sway {
+  0%, 100% { transform: rotate(-8deg) translate(0, 0); }
+  50%      { transform: rotate(-6deg) translate(-3px, 2px); }
+}
+
+.hero-card-mid {
+  width: 168px;
+  height: 118px;
+  background: linear-gradient(135deg, var(--bg-card), var(--bg-surface-raised));
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  top: 38px;
+  left: 66px;
+  transform: rotate(-3deg);
+  animation: hero-card-mid-sway 7s ease-in-out infinite;
+  animation-delay: -1.5s;
+}
+
+@keyframes hero-card-mid-sway {
+  0%, 100% { transform: rotate(-3deg) translate(0, 0); }
+  50%      { transform: rotate(-1deg) translate(2px, -3px); }
+}
+
+.hero-card-front {
+  width: 148px;
+  height: 104px;
+  background: linear-gradient(135deg, var(--bg-card), var(--bg-surface-raised));
+  border: 1px solid var(--accent-border);
+  border-radius: 14px;
+  top: 52px;
+  left: 86px;
+  box-shadow: 0 8px 24px rgba(91, 138, 204, 0.25);
+  animation: hero-card-front-pulse 3.5s ease-in-out infinite;
+  overflow: hidden;
+}
+
+.hero-card-glow {
+  position: absolute;
+  top: -30%;
+  left: -10%;
+  width: 120%;
+  height: 60%;
+  background: radial-gradient(ellipse, rgba(91, 138, 204, 0.15), transparent 70%);
+  pointer-events: none;
+}
+
+@keyframes hero-card-front-pulse {
+  0%, 100% {
+    box-shadow: 0 8px 24px rgba(91, 138, 204, 0.25);
+    transform: translateY(0);
+  }
+  50% {
+    box-shadow: 0 12px 32px rgba(91, 138, 204, 0.4);
+    transform: translateY(-4px);
+  }
+}
+
+.hero-card-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.hero-card-content .app-icon {
+  animation: hero-ai-spin 4s ease-in-out infinite;
+}
+
+@keyframes hero-ai-spin {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25%      { transform: scale(1.1) rotate(-5deg); }
+  75%      { transform: scale(1.1) rotate(5deg); }
+}
+
+/* 装饰光点 */
+.hero-sparkle {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  pointer-events: none;
+}
+
+.hero-sparkle-1 {
+  width: 6px; height: 6px;
+  top: 10px; right: 30px;
+  opacity: 0.5;
+  animation: sparkle-twinkle 2s ease-in-out infinite;
+}
+
+.hero-sparkle-2 {
+  width: 4px; height: 4px;
+  top: 60px; right: 0;
+  opacity: 0.4;
+  animation: sparkle-twinkle 2.5s ease-in-out infinite;
+  animation-delay: -0.8s;
+}
+
+.hero-sparkle-3 {
+  width: 5px; height: 5px;
+  bottom: 50px; left: 10px;
+  opacity: 0.45;
+  animation: sparkle-twinkle 3s ease-in-out infinite;
+  animation-delay: -1.5s;
+}
+
+@keyframes sparkle-twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.8); }
+  50%      { opacity: 0.7; transform: scale(1.2); }
+}
+
+.hero-float-badge {
+  position: absolute;
+  bottom: -8px;
+  right: 5px;
+  background: var(--bg-card);
+  border: 1px solid var(--accent-border);
+  border-radius: 12px;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  animation: hero-badge-bob 4s ease-in-out infinite;
+  animation-delay: -2s;
+}
+
+.badge-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-primary);
+}
+
+.badge-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.badge-num {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.badge-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+@keyframes hero-badge-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-card-stack,
+  .hero-card-back,
+  .hero-card-mid,
+  .hero-card-front,
+  .hero-card-content .app-icon,
+  .hero-float-badge {
+    animation: none !important;
+  }
+}
+/* ===== Mode Section ===== */
+.mode-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.section-label {
+  margin-bottom: 0.25rem;
+}
+
+.mode-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.mode-card {
+  padding: 1.25rem 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.mode-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface-raised);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mode-card:hover .mode-icon {
+  transform: scale(1.05);
+}
+
+.mode-info {
+  flex: 1;
+}
+
+.mode-info .web-h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.125rem;
+}
+
+.mode-arrow {
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.mode-card:hover .mode-arrow {
+  transform: translateX(3px);
+  color: var(--accent-primary);
+}
+
+/* ===== Section Header ===== */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.005em;
+}
+
+/* ===== Bank Grid ===== */
+.bank-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.bank-card {
+  padding: 1.25rem;
+  cursor: pointer;
+}
+
+.bank-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.bank-header .web-h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.bank-meta {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+/* Skeleton bank card */
+.skeleton-bank-card {
+  padding: 1.25rem;
+  pointer-events: none;
+}
+
+/* Subject tabs */
+.subject-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
+  scrollbar-width: thin;
+}
+
+.subject-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.subject-tab:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.subject-tab.active {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #fff;
+}
+
+.subject-tab.active .tab-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 0.2rem;
+  background: var(--bg-surface-raised);
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+
+/* ===== Continue Practice Section — Filmstrip ===== */
+.continue-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.filmstrip {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding: 0.5rem 0 0.75rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+.filmstrip::-webkit-scrollbar {
+  height: 4px;
+}
+
+.filmstrip::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.filmstrip::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 999px;
+}
+
+.film-frame {
+  position: relative;
+  flex-shrink: 0;
+  width: 200px;
+  padding: 0;
+  cursor: pointer;
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.film-frame:hover {
+  transform: translateY(-6px) rotate(-1.5deg);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--accent-border);
+}
+
+.film-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    transparent 60%
+  );
+  pointer-events: none;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+/* Animated film scan line */
+.film-frame::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(91, 138, 204, 0.07) 40%,
+    rgba(91, 138, 204, 0.14) 50%,
+    rgba(91, 138, 204, 0.07) 60%,
+    transparent 100%
+  );
+  animation: filmScan 3s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  pointer-events: none;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+@keyframes filmScan {
+  0%   { top: -40px; opacity: 0; }
+  5%   { opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  95%  { opacity: 0; }
+  100% { top: calc(100% + 40px); opacity: 0; }
+}
+
+/* Film grain overlay */
+.film-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  border-radius: inherit;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 120px 120px;
+  animation: grainShift 0.4s steps(1) infinite;
+}
+
+@keyframes grainShift {
+  0%   { background-position: 0 0; }
+  20%  { background-position: -20px 10px; }
+  40%  { background-position: 15px -20px; }
+  60%  { background-position: -10px 20px; }
+  80%  { background-position: 20px -10px; }
+  100% { background-position: 0 0; }
+}
+
+/* Sprocket holes rail */
+.sprockets {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  padding: 10px 0;
+  width: 18px;
+  flex-shrink: 0;
+  background: var(--bg-surface-raised);
+  border-radius: 2px;
+}
+
+.sprocket-hole {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--bg-card);
+  margin: 0 auto;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.film-content {
+  flex: 1;
+  padding: 0.625rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.film-number {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+}
+
+.film-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text-primary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.film-meta {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-top: auto;
+}
+
+.film-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.375rem;
+}
+
+.film-progress-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--bg-surface-raised);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.film-progress-fill {
+  height: 100%;
+  background: var(--accent-primary);
+  border-radius: 999px;
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.film-progress-text {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .film-frame::after {
+    animation: none;
+  }
+
+  .film-grain {
+    animation: none;
+  }
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .hero-right {
+    display: none;
+  }
+
+  .hero-desc {
+    max-width: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .home-view {
+    gap: 1.5rem;
+    padding-bottom: 72px;
+  }
+
+  .hero {
+    padding: 0.5rem 0;
+  }
+
+  .hero-title {
+    font-size: 1.75rem;
+  }
+
+  .hero-desc {
+    font-size: 0.95rem;
+  }
+
+  .mode-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .bank-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-cta {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .hero-cta .btn {
+    width: 100%;
+  }
+
+  .continue-progress-bar {
+    width: 60px;
+  }
+
+  .filmstrip {
+    gap: 0.5rem;
+  }
+
+  .film-frame {
+    width: 170px;
+  }
+
+  .sprockets {
+    width: 14px;
+  }
+
+  .sprocket-hole {
+    width: 6px;
+    height: 6px;
+  }
+}
+</style>

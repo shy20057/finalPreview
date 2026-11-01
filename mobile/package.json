@@ -1,0 +1,26 @@
+{
+  "name": "finalprep-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "HBuilderX uni-app Vue 3 mobile client for FinalPrep",
+  "scripts": {
+    "build:app": "node scripts/build.mjs app",
+    "build:h5": "node scripts/build.mjs h5",
+    "test:logic": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@tiptap/core": "^3.27.1",
+    "@tiptap/extension-color": "^3.27.1",
+    "@tiptap/extension-highlight": "^3.27.1",
+    "@tiptap/extension-image": "^3.27.1",
+    "@tiptap/extension-link": "^3.27.1",
+    "@tiptap/extension-text-style": "^3.27.1",
+    "@tiptap/extension-underline": "^3.27.1",
+    "@tiptap/pm": "^3.27.1",
+    "@tiptap/starter-kit": "^3.27.1",
+    "marked": "^18.0.5",
+    "pinia": "^3.0.4",
+    "turndown": "^7.2.0"
+  }
+}

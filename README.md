@@ -10,6 +10,8 @@
 
 FinalPrep 是一个基于 Vue 3 + Express.js 构建的在线练习与考试系统，支持单选题、多选题、填空题等多种题型，提供练习模式和考试模式，帮助学生高效完成期末复习。
 
+移动端迁移工程位于 [`mobile/`](mobile/README.md)，采用 uni-app Vue 3，当前按方案 A 逐页还原原网页，首要目标为 Android。请用 HBuilderX 单独导入 `mobile/`；环境配置、模拟器运行和待验证清单见[移动端指南](mobile/README.md)。已完成源码迁移、原网页与移动端资源构建，并在 Android 模拟器中完成登录、四种题型交卷和笔记保存验证；当前像素级一致性仍在验收，详细证据见[验证记录](mobile/VERIFICATION.md)。
+
 ![首页](screenshots/home.png)
 
 ---

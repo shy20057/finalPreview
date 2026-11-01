@@ -1,0 +1,19 @@
+{
+  "id": "zcool-xiaowei",
+  "family": "ZCOOL XiaoWei",
+  "subsets": ["chinese-simplified", "latin"],
+  "weights": [400],
+  "styles": ["normal"],
+  "defSubset": "latin",
+  "variable": false,
+  "lastModified": "2025-09-05",
+  "version": "v15",
+  "category": "sans-serif",
+  "license": {
+    "type": "OFL-1.1",
+    "url": "https://openfontlicense.org",
+    "attribution": "Copyright 2018 The ZCOOL XiaoWei Project Authors (https://www.github.com/googlefonts/xiaowei)"
+  },
+  "source": "https://github.com/google/fonts",
+  "type": "google"
+}

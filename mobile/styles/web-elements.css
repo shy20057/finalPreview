@@ -1,0 +1,29 @@
+/* Browser defaults retained for semantic HTML converted to uni-app elements. */
+.web-h1 { display: block; font-size: 2em; font-weight: 700; }
+.web-h2 { display: block; font-size: 1.5em; font-weight: 700; }
+.web-h3 { display: block; font-size: 1.17em; font-weight: 700; }
+.web-h4 { display: block; font-weight: 700; }
+.web-h5 { display: block; font-size: .83em; font-weight: 700; }
+.web-h6 { display: block; font-size: .67em; font-weight: 700; }
+.web-p, .web-ul, .web-ol, .web-li { display: block; }
+.web-strong, .web-b { font-weight: bolder; }
+.web-em, .web-i { font-style: italic; }
+.web-small { font-size: smaller; }
+.web-kbd { font-family: monospace; }
+.web-a { color: inherit; text-decoration: none; }
+.web-button {
+  margin: 0; padding: 0; font-family: inherit; font-size: inherit;
+  line-height: normal; color: inherit; text-align: center;
+  border: none; border-radius: 0; background: transparent;
+  box-sizing: border-box; overflow: visible;
+}
+.web-button::after { border: none; }
+.web-button[disabled] { pointer-events: none; }
+view, text, image, input, textarea, button, scroll-view, form { box-sizing: border-box; }
+.editor-wysiwyg *, .markdown-body *, .cmd-item-label * {
+  box-sizing: border-box; margin: 0; padding: 0;
+}
+.auth-placeholder { color: rgba(150, 150, 176, 0.45); }
+.fp-gap-left { margin-left: calc(var(--fp-gap-margin) + var(--fp-gap-size)) !important; }
+.fp-gap-top { margin-top: calc(var(--fp-gap-margin) + var(--fp-gap-size)) !important; }
+.fp-gap-right { margin-right: calc(var(--fp-gap-right-margin) + var(--fp-gap-size)) !important; }
