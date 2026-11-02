@@ -20,9 +20,19 @@
 .web-button::after { border: none; }
 .web-button[disabled] { pointer-events: none; }
 view, text, image, input, textarea, button, scroll-view, form { box-sizing: border-box; }
+/* #ifndef MP-WEIXIN */
 .editor-wysiwyg *, .markdown-body *, .cmd-item-label * {
   box-sizing: border-box; margin: 0; padding: 0;
 }
+/* #endif */
+/* #ifdef MP-WEIXIN */
+/* WXSS does not support universal selectors. */
+.editor-wysiwyg view, .editor-wysiwyg text, .editor-wysiwyg image,
+.markdown-body view, .markdown-body text, .markdown-body image,
+.cmd-item-label view, .cmd-item-label text, .cmd-item-label image {
+  box-sizing: border-box; margin: 0; padding: 0;
+}
+/* #endif */
 .auth-placeholder { color: rgba(150, 150, 176, 0.45); }
 .fp-gap-left { margin-left: calc(var(--fp-gap-margin) + var(--fp-gap-size)) !important; }
 .fp-gap-top { margin-top: calc(var(--fp-gap-margin) + var(--fp-gap-size)) !important; }

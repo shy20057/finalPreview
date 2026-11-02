@@ -1,10 +1,21 @@
 <template>
+  <!-- #ifdef APP-PLUS || H5 -->
   <HtmlContent class="app-icon" :html="svgMarkup" :style="{ ...dimensions, color: color || 'inherit' }" />
+  <!-- #endif -->
+  <!-- #ifdef MP-WEIXIN -->
+  <view class="app-icon" :style="{ ...dimensions, color: color || 'inherit' }">
+    <image v-if="colored" class="app-icon-image" :src="miniProgramSource" mode="aspectFit" />
+    <view v-else-if="miniProgramSource" class="app-icon-mask" :style="{ 'mask-image': 'url(' + miniProgramSource + ')', '-webkit-mask-image': 'url(' + miniProgramSource + ')' }" />
+  </view>
+  <!-- #endif -->
 </template>
 
 <script>
 import { ICON_DATA, ICON_FILLED_DATA } from '../utils/icons.js'
 import HtmlContent from './HtmlContent.vue'
+// #ifdef MP-WEIXIN
+import { svgDataUri } from '../utils/svgDataUri.js'
+// #endif
 
 export default {
   name: 'AppIcon',
@@ -23,6 +34,12 @@ export default {
     color: { type: String, default: '' },
   },
   computed: {
+    // #ifdef MP-WEIXIN
+    miniProgramSource() {
+      if (!this.svgMarkup) return ''
+      return svgDataUri(this.svgMarkup.replace(/currentColor/g, '#000000'))
+    },
+    // #endif
     svgMarkup() {
       let svg
       if (this.path) svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${this.path.replace(/["<>]/g, '')}"/></svg>`
@@ -32,7 +49,14 @@ export default {
         svg = String.fromCharCode(...new Uint8Array(uni.base64ToArrayBuffer(uri.split(',')[1])))
         if (!this.colored) svg = svg.replace(/#000(?:000)?(?=["'])/g, 'currentColor')
       }
+      // #ifdef MP-WEIXIN
+      // SVG images require valid XML; HTML tolerates duplicate root attributes.
+      return svg.replace(/<svg\b([^>]*)>/i, (_, attributes) =>
+        '<svg' + attributes.replace(/\s(?:width|height|style)\s*=\s*("[^"]*"|'[^']*')/gi, '') + ' width="100%" height="100%">')
+      // #endif
+      // #ifndef MP-WEIXIN
       return svg.replace('<svg ', '<svg width="100%" height="100%" style="display:block" ')
+      // #endif
     },
     dimensions() {
       const unit = value => typeof value === 'number' ? `${value}px` : String(value)
@@ -48,4 +72,14 @@ export default {
   flex-shrink: 0;
   vertical-align: middle;
 }
+/* #ifdef MP-WEIXIN */
+.app-icon-image, .app-icon-mask { display: block; width: 100%; height: 100%; }
+.app-icon-mask {
+  background-color: currentColor;
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+}
+/* #endif */
 </style>

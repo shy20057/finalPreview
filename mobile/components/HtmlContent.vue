@@ -1,8 +1,20 @@
-<template><view :id="hostId" :html="{ id: hostId, html }" :change:html="content.update" /></template>
+<template>
+  <!-- #ifdef APP-PLUS || H5 -->
+  <view :id="hostId" :html="{ id: hostId, html }" :change:html="content.update" />
+  <!-- #endif -->
+  <!-- #ifdef MP-WEIXIN -->
+  <view><rich-text :nodes="miniProgramHtml" /></view>
+  <!-- #endif -->
+</template>
 <script>
 export default {
   props: { html: { type: String, default: '' } },
   data() { return { hostId: 'fp-html-' + Math.random().toString(36).slice(2) } },
+  computed: {
+    miniProgramHtml() {
+      return this.html.replace(/(["'])\/assets\//g, '$1/static/assets/')
+    },
+  },
   methods: {
     openLink(href) {
       if (!/^(https?:\/\/|mailto:)/i.test(href)) return
