@@ -1,4 +1,13 @@
-<template><view :id="hostId" class="star-field" :enabled="{ id: hostId, active }" :change:enabled="stars.setActive" /></template>
+<template>
+  <!-- #ifdef APP-PLUS || H5 -->
+  <view :id="hostId" class="star-field" :enabled="{ id: hostId, active }" :change:enabled="stars.setActive" />
+  <!-- #endif -->
+  <!-- #ifdef MP-WEIXIN -->
+  <view class="star-field">
+    <image class="star-field-image" src="/static/assets/images/starry-night.jpg" mode="aspectFill" />
+  </view>
+  <!-- #endif -->
+</template>
 <script>export default { props: { active: { type: Boolean, default: true } }, data() { return { hostId: 'fp-stars-' + Math.random().toString(36).slice(2) } } }</script>
 <script module="stars" lang="renderjs">
 import { installViewLayout } from '../utils/viewLayout.js?compat=2'
@@ -146,5 +155,10 @@ export default {
   },
 }
 </script>
-<style scoped>.star-field { width: 100%; height: 100%; }</style>
+<style scoped>
+.star-field { width: 100%; height: 100%; }
+/* #ifdef MP-WEIXIN */
+.star-field-image { display: block; width: 100%; height: 100%; opacity: 0.45; }
+/* #endif */
+</style>
 

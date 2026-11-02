@@ -7,7 +7,12 @@
 <template>
   <view class="app" :class="themeClass" @click="pageTap">
     <!-- 背景氛围层（原 body::before） -->
-    <view class="ambient-bg" />
+    <view class="ambient-bg">
+      <!-- #ifdef MP-WEIXIN -->
+      <image class="ambient-image" :src="appStore.theme === 'light' ? '/static/assets/images/sunflowers.jpg' : '/static/assets/images/starry-night.jpg'" mode="aspectFill" />
+      <view class="ambient-shade" />
+      <!-- #endif -->
+    </view>
 
     <!-- 顶栏 -->
     <view class="app-header">

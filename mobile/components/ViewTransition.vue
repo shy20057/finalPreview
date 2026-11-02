@@ -1,4 +1,11 @@
-<template><view :id="hostId" class="view-transition" :config="{ id: hostId, name }" :change:config="motion.setup"><slot /></view></template>
+<template>
+  <!-- #ifdef APP-PLUS || H5 -->
+  <view :id="hostId" class="view-transition" :config="{ id: hostId, name }" :change:config="motion.setup"><slot /></view>
+  <!-- #endif -->
+  <!-- #ifdef MP-WEIXIN -->
+  <view class="view-transition" style="display: contents"><slot /></view>
+  <!-- #endif -->
+</template>
 <script>
 export default {
   props: { name: { type: String, default: 'v' } },

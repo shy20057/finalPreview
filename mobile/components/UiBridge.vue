@@ -1,5 +1,10 @@
 <template>
+  <!-- #ifdef APP-PLUS || H5 -->
   <view :id="hostId" class="ui-bridge" :enabled="{ id: hostId, active }" :change:enabled="ui.setActive" />
+  <!-- #endif -->
+  <!-- #ifdef MP-WEIXIN -->
+  <view class="ui-bridge" />
+  <!-- #endif -->
 </template>
 
 <script>

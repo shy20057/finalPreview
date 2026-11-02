@@ -19,7 +19,9 @@ export default {
 </script>
 
 <style>
+/* #ifndef MP-WEIXIN */
 @import './styles/fonts.css';
+/* #endif */
 @import './styles/web-elements.css';
 @import './styles/app.css';
 </style>

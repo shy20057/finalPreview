@@ -1,31 +1,31 @@
 <template>
   
     <ViewTransition name="drawer">
-      <view v-if="isOpen" class="mobile-drawer-overlay" @click="close">
-        <view class="mobile-drawer" @click.stop>
+      <view v-if="isOpen" class="mobile-drawer-overlay" @tap="close">
+        <view class="mobile-drawer" @tap.stop>
           <view class="drawer-header">
             <text class="drawer-logo">
               <image class="drawer-logo-mark" src="/static/icon.svg" />
               期末复习
             </text>
-            <button class="web-button drawer-close" @click="close" aria-label="关闭">
+            <button class="web-button drawer-close" @tap.stop="close" aria-label="关闭">
               <AppIcon name="i5862c3a5" :size="20" />
             </button>
           </view>
 
           <view class="drawer-nav">
-            <RouteLink
+            <view
               v-for="(item, index) in navItems"
               :key="item.path"
-              :to="item.path"
               class="drawer-item"
+              :class="{ 'router-link-active': isActive(item.path) }"
               :style="{ animationDelay: `${index * 50}ms` }"
-              @click="close"
+              @tap.stop="navigateTo(item.path)"
             >
               <AppIcon class="drawer-icon" :path="item.iconPath" :size="20" />
               <text class="drawer-label">{{ item.label }}</text>
               <DynamicBadge v-if="item.path === '/wrongbook'" class="drawer-badge" />
-            </RouteLink>
+            </view>
           </view>
         </view>
       </view>
@@ -38,8 +38,21 @@ import { inject } from 'vue'
 const appScope = inject('appScope', '')
 import { ref, onMounted, onUnmounted } from 'vue'
 import DynamicBadge from './DynamicBadge.vue'
+import { useRoute, useRouter } from '../utils/router.js'
 
 const isOpen = ref(false)
+const route = useRoute()
+const router = useRouter()
+
+function isActive(path) {
+  return route.path === path || (path !== '/' && route.path.startsWith(`${path}/`))
+}
+
+function navigateTo(path) {
+  // Bind the native tap directly: mini-program slot events need not cross RouteLink.
+  if (route.path !== path) router.push(path)
+  close()
+}
 
 const navItems = [
   { path: '/', label: '首页', iconPath: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10' },
