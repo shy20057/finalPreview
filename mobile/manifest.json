@@ -36,13 +36,20 @@
   },
   "quickapp": {},
   "mp-weixin": {
-    "appid": "",
+    "appid": "wxe0db3e8dd83b81cd",
     "setting": {
       "urlCheck": true,
       "es6": true,
       "minified": true
     },
-    "usingComponents": true
+    "usingComponents": true,
+    "packOptions": {
+      "ignore": [
+        { "type": "folder", "value": "static/fonts" },
+        { "type": "file", "value": "static/assets/images/cafe-terrace.jpg" },
+        { "type": "file", "value": "static/assets/images/sunflowers.jpg" }
+      ]
+    }
   },
   "vueVersion": "3"
 }

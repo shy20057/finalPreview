@@ -13,7 +13,7 @@
           </div>
           <div>
             <h2>导入题库</h2>
-            <p class="header-subtitle">从 Markdown 文件导入，或用 AI 生成</p>
+            <p class="header-subtitle">从 JSON 文件导入，或用 AI 生成</p>
           </div>
         </div>
         <button class="close-btn" @click="closeModal" aria-label="关闭">
@@ -58,7 +58,7 @@
             >
               <input
                 type="file"
-                accept=".md"
+                accept=".json,application/json"
                 @change="handleFileSelect"
                 ref="fileInput"
                 style="display: none"
@@ -70,11 +70,11 @@
                   <line x1="12" y1="3" x2="12" y2="15"/>
                 </svg>
               </div>
-              <p class="upload-text">拖拽 .md 文件到此处</p>
+              <p class="upload-text">拖拽 .json 文件到此处</p>
               <p class="upload-hint">或点击此处选择文件</p>
               <div class="upload-formats">
-                <span class="format-chip">.md</span>
-                <span class="format-chip">含 ```json 代码块</span>
+                <span class="format-chip">.json</span>
+                <span class="format-chip">纯 JSON 对象</span>
               </div>
             </div>
 
@@ -93,7 +93,7 @@
                 <line x1="12" y1="16" x2="12" y2="12"/>
                 <line x1="12" y1="8" x2="12.01" y2="8"/>
               </svg>
-              <span>没有 .md 文件？查看右侧"AI 生成"流程</span>
+              <span>没有 .json 文件？查看右侧"AI 生成"流程</span>
             </div>
           </div>
 
@@ -178,15 +178,15 @@
               <li>
                 <span class="step-marker">2</span>
                 <div>
-                  <strong>粘贴学习通原题</strong>
-                  <p>把提示词末尾的"[粘贴学习通内容]"替换为题目文本</p>
+                  <strong>填写出题需求或参考材料</strong>
+                  <p>选择自主出题并填写需求，或粘贴原题仅做格式整理</p>
                 </div>
               </li>
               <li>
                 <span class="step-marker">3</span>
                 <div>
-                  <strong>保存为 .md 文件</strong>
-                  <p>AI 输出的 Markdown 保存为 .md 后上传到左侧</p>
+                  <strong>下载并上传 .json 文档</strong>
+                  <p>下载 AI 生成的 .json 文档后上传，文件内容须为 JSON 对象</p>
                 </div>
               </li>
             </ol>
@@ -209,29 +209,11 @@
           <div class="guide-section">
             <div class="guide-section-header">
               <span class="guide-badge guide-badge-fmt">格式</span>
-              <h4>Markdown 结构</h4>
+              <h4>JSON 结构</h4>
             </div>
-            <p class="guide-desc">.md 文件需包含 <code>```json</code> 代码块：</p>
+            <p class="guide-desc">.json 文件直接保存以下结构，不要添加代码块标记；示例包含四种题型：</p>
             <div class="code-block">
-<pre>```json
-{
-  "name": "题库名称",
-  "subject": "学科",
-  "questions": [
-    {
-      "id": 1,
-      "type": "single",
-      "question": "题干",
-      "options": [
-        { "label": "A", "text": "选项A" },
-        { "label": "B", "text": "选项B" }
-      ],
-      "answer": "A",
-      "score": 2.8
-    }
-  ]
-}
-```</pre>
+<pre>{{ codeSample }}</pre>
             </div>
             <div class="type-tags">
               <span class="type-tag"><code>single</code> 单选</span>
@@ -267,8 +249,9 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { parseMdBank, readFileContent } from '../utils/parser.js'
+import { parseJsonBank, readFileContent } from '../utils/parser.js'
 import { validateBank } from '../utils/validator.js'
+import { bankImportPrompt as promptText, bankJsonExample as codeSample } from '../utils/bankImportTemplate.js'
 
 const emit = defineEmits(['close', 'import'])
 
@@ -297,24 +280,6 @@ function typeLabel(t) {
   return { single: '单选', multi: '多选', fill: '填空', essay: '简答' }[t] || t
 }
 
-const promptText = `请将以下从学习通导出的题库文本整理为 Markdown 格式，其中题库数据以 \`\`\`json 的代码块形式包裹。
-
-要求：
-1. 外层 Markdown 包含标题（如"# 操作系统 - IO设备"）和简短介绍。
-2. 代码块内的 JSON 数据必须包含 name（题库名称）、subject（学科）和 questions 数组。
-3. 题目类型 type 为 "single"（单选题）、"multi"（多选题）、"fill"（填空题）或 "essay"（简答题）。
-4. 单选题包含 options（[{label, text}] 数组）和 answer（"A"/"B"/"C"/"D"）。
-5. 多选题包含 options（[{label, text}] 数组）和 answer（["A", "C"] 数组形式，至少两个正确答案）。
-6. 填空题包含 blanks（填空数量）和 answer（答案数组）。
-7. 简答题包含 answer（参考答案文本字符串）。
-8. 单选题和多选题的 options 要去掉序号前缀（如"（1）"、"（2）"），只保留实际选项文本。
-9. 填空题的 answer 数组必须使用标准答案，不要保留"我的答案"。
-10. 如果题干中有图片引用（如"xxx图.png"），保留题干原样即可。
-11. 分值统一用 score 字段（如 2.8、2.9、5.0）。
-
-以下是原始文本：
-[粘贴学习通内容]`
-
 function closeModal() {
   emit('close')
 }
@@ -329,12 +294,7 @@ async function handleFileSelect(event) {
 async function handleDrop(event) {
   isDragging.value = false
   const file = event.dataTransfer.files[0]
-  if (file && file.name.endsWith('.md')) {
-    await processFile(file)
-  } else {
-    hasError.value = true
-    errorMessage.value = '请上传 .md 格式的文件'
-  }
+  if (file) await processFile(file)
 }
 
 async function processFile(file) {
@@ -343,9 +303,15 @@ async function processFile(file) {
   previewBank.value = null
   currentFileName.value = file.name
 
+  if (!/\.json$/i.test(file.name)) {
+    hasError.value = true
+    errorMessage.value = '请上传 .json 格式的文件'
+    return
+  }
+
   try {
     const content = await readFileContent(file)
-    const { success, data, error } = parseMdBank(content)
+    const { success, data, error } = parseJsonBank(content)
     if (!success) {
       hasError.value = true
       errorMessage.value = error || 'JSON 解析失败'

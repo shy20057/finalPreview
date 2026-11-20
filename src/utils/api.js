@@ -1,5 +1,5 @@
 /**
- * HTTP API client for backend (Node.js + SQLite)
+ * HTTP API client for backend (FastAPI + SQLite)
  */
 
 const API_BASE = ''
@@ -278,6 +278,29 @@ export async function saveSession(data) {
 
 export async function deleteSession(bankId) {
   return request(`/api/sessions/${bankId}`, { method: 'DELETE' })
+}
+
+// Agent (LangChain + LangGraph + DeepAgents, human-in-the-loop)
+export async function agentChat(message, threadId = '') {
+  return request('/api/agent/chat', {
+    method: 'POST',
+    body: JSON.stringify({ message, threadId }),
+  })
+}
+
+export async function agentResume(threadId, decisions) {
+  return request('/api/agent/resume', {
+    method: 'POST',
+    body: JSON.stringify({ threadId, decisions }),
+  })
+}
+
+export async function agentHistory(threadId) {
+  return request(`/api/agent/history?threadId=${encodeURIComponent(threadId)}`)
+}
+
+export async function agentThreads() {
+  return request('/api/agent/threads')
 }
 
 // Resources (HTML files managed by backend)

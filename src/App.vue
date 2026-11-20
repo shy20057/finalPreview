@@ -24,6 +24,7 @@
             <router-link to="/history" class="nav-link" active-class="active">历史</router-link>
             <router-link to="/wrongbook" class="nav-link" active-class="active">错题</router-link>
             <router-link to="/favorites" class="nav-link" active-class="active">收藏</router-link>
+            <router-link to="/agent" class="nav-link" active-class="active">AI 助手</router-link>
             <router-link to="/profile" class="nav-link" active-class="active">个人中心</router-link>
             <router-link to="/settings" class="nav-link" active-class="active">设置</router-link>
           </nav>

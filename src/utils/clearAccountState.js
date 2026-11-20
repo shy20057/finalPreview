@@ -1,4 +1,5 @@
 import { useAppStore } from '../stores/app.js'
+import { useAgentStore } from '../stores/agent.js'
 import { useBankStore } from '../stores/bank.js'
 import { useFavoriteStore } from '../stores/favorite.js'
 import { useHistoryStore } from '../stores/history.js'
@@ -32,4 +33,6 @@ export function clearAccountState() {
   app.aiConfig = { baseUrl: '', apiKey: '', model: '', name: '' }
   app.allAiConfigs = []
   app.aiConfigLoaded = false
+
+  useAgentStore().reset()
 }

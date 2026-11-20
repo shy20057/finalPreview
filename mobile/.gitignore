@@ -4,6 +4,8 @@ node_modules/
 .fonttmp/
 .shots/
 .hbuilderx/
+# Generated from the original painting by vite.config.js for WeChat only.
+static/mp-weixin/sunflowers.jpg
 *.keystore
 *.jks
 *.p12

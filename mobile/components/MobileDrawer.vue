@@ -118,7 +118,18 @@ defineExpose({ open, close, isOpen })
   justify-content: space-between;
   padding: 16px;
   border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
+
+/* #ifdef MP-WEIXIN */
+.mobile-drawer {
+  padding-bottom: var(--shell-bottom-inset, env(safe-area-inset-bottom, 0px));
+}
+
+.drawer-header {
+  padding-top: calc(16px + var(--shell-top-inset, env(safe-area-inset-top, 0px)));
+}
+/* #endif */
 
 .drawer-logo {
   display: flex;
@@ -154,6 +165,7 @@ defineExpose({ open, close, isOpen })
 
 .drawer-nav {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 8px;
 }

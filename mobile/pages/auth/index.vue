@@ -46,12 +46,14 @@
 
             <view class="field">
               <label>用户名</label>
-              <input v-model="loginForm.username" type="text" placeholder="输入用户名" autocomplete="username" :disabled="loading" required placeholder-class="auth-placeholder" />
+              <view class="auth-input-wrap">
+                <input class="auth-input" v-model="loginForm.username" type="text" placeholder="请输入用户名" autocomplete="username" :disabled="loading" required placeholder-class="auth-placeholder" placeholder-style="color: #a8b2c5; font-size: 16px;" />
+              </view>
             </view>
             <view class="field">
               <label>密码</label>
-              <view class="password-wrap">
-                <input v-model="loginForm.password" type="text" :password="!showPwd" placeholder="输入密码" autocomplete="current-password" :disabled="loading" required placeholder-class="auth-placeholder" />
+              <view class="auth-input-wrap">
+                <input class="auth-input" v-model="loginForm.password" type="text" :password="!showPwd" placeholder="请输入密码" autocomplete="current-password" :disabled="loading" required placeholder-class="auth-placeholder" placeholder-style="color: #a8b2c5; font-size: 16px;" />
                 <button type="button" class="web-button eye-btn" @click="showPwd = !showPwd" tabindex="-1">
                   <AppIcon name="i5e6ca02a" :size="18" v-if="showPwd" />
                   <AppIcon name="ic29898a6" :size="18" v-else />
@@ -70,12 +72,14 @@
 
             <view class="field">
               <label>用户名</label>
-              <input v-model="regForm.username" type="text" placeholder="2-20 个字符" autocomplete="username" :disabled="loading" required placeholder-class="auth-placeholder" />
+              <view class="auth-input-wrap">
+                <input class="auth-input" v-model="regForm.username" type="text" placeholder="2-20 个字符" autocomplete="username" :disabled="loading" required placeholder-class="auth-placeholder" placeholder-style="color: #a8b2c5; font-size: 16px;" />
+              </view>
             </view>
             <view class="field">
               <label>密码</label>
-              <view class="password-wrap">
-                <input v-model="regForm.password" type="text" :password="!showPwd" placeholder="至少 6 位" autocomplete="new-password" :disabled="loading" required placeholder-class="auth-placeholder" />
+              <view class="auth-input-wrap">
+                <input class="auth-input" v-model="regForm.password" type="text" :password="!showPwd" placeholder="至少 6 位" autocomplete="new-password" :disabled="loading" required placeholder-class="auth-placeholder" placeholder-style="color: #a8b2c5; font-size: 16px;" />
                 <button type="button" class="web-button eye-btn" @click="showPwd = !showPwd" tabindex="-1">
                   <AppIcon name="i5e6ca02a" :size="18" v-if="showPwd" />
                   <AppIcon name="ic29898a6" :size="18" v-else />
@@ -84,7 +88,9 @@
             </view>
             <view class="field">
               <label>确认密码</label>
-              <input v-model="regForm.confirm" type="text" password placeholder="再次输入密码" autocomplete="new-password" :disabled="loading" required placeholder-class="auth-placeholder" />
+              <view class="auth-input-wrap">
+                <input class="auth-input" v-model="regForm.confirm" type="text" password placeholder="再次输入密码" autocomplete="new-password" :disabled="loading" required placeholder-class="auth-placeholder" placeholder-style="color: #a8b2c5; font-size: 16px;" />
+              </view>
             </view>
 
             <view v-if="error" class="auth-error">{{ error }}</view>
@@ -346,8 +352,9 @@ async function onRegister() {
 /* 不规则卡片：左上大圆角 + 右下斜切 */
 .auth-card {
   width: 100%;
-  max-width: 380px;
-  padding: 2.25rem;
+  flex-shrink: 0;
+  max-width: 420px;
+  padding: 32px 24px;
   background: rgba(20, 20, 38, 0.65);
   border: 1px solid rgba(91, 138, 204, 0.15);
   border-radius: 28px 28px 28px 64px;
@@ -393,56 +400,72 @@ async function onRegister() {
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
+  flex-shrink: 0;
 }
 
 .field label {
+  margin-bottom: 8px;
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-secondary);
 }
 
-.field input {
-  padding: 0.625rem 0.875rem;
+.auth-input-wrap {
+  /* Keep the tall visual field separate from the native single-line control. */
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  width: 100%;
+  height: 52px;
+  min-height: 52px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  padding: 0 14px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
-  color: var(--text-primary);
-  font-size: 0.9rem;
-  outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.field input::placeholder {
-  color: rgba(150, 150, 176, 0.45);
+.auth-input {
+  flex: 1;
+  width: 0;
+  min-width: 0;
+  height: 28px;
+  min-height: 28px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 28px;
+  outline: none;
 }
 
-.field input:focus {
+.auth-input::placeholder {
+  color: #a8b2c5;
+  font-size: 16px;
+}
+
+.auth-input-wrap:focus-within {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-.password-wrap {
-  position: relative;
-}
-
-.password-wrap input {
-  width: 100%;
-  padding-right: 2.5rem;
-}
-
 .eye-btn {
-  position: absolute;
-  right: 0.5rem;
-  top: 50%;
-  transform: translateY(-50%);
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
   background: none;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 0.25rem;
+  padding: 0;
   display: flex;
   align-items: center;
+  justify-content: center;
 }
 
 .eye-btn:hover { color: var(--accent-primary); }
@@ -504,8 +527,16 @@ async function onRegister() {
 }
 
 @media (max-width: 768px) {
+  .auth-page { height: auto; min-height: 100vh; overflow: visible; }
   .visual-overlay { display: none; }
-  .form-zone { width: 100%; background: transparent; }
+  .form-zone {
+    position: relative;
+    width: 100%;
+    height: auto;
+    min-height: 100vh;
+    padding: 24px 16px;
+    background: transparent;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

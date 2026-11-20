@@ -12,7 +12,7 @@ export function validateBank(data) {
   const errors = []
 
   // 顶层字段校验
-  if (!data || typeof data !== 'object') {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
     return { valid: false, errors: ['数据格式错误：不是有效的 JSON 对象'], data: null }
   }
 
@@ -56,6 +56,10 @@ export function validateBank(data) {
 function validateQuestion(q, num) {
   const errors = []
 
+  if (!q || typeof q !== 'object' || Array.isArray(q)) {
+    return [`第 ${num} 题：必须是有效的题目对象`]
+  }
+
   if (!q.id && q.id !== 0) {
     errors.push(`第 ${num} 题：缺少 "id" 字段`)
   }
@@ -75,7 +79,7 @@ function validateQuestion(q, num) {
       errors.push(`第 ${num} 题（单选）：options 至少需要 2 个选项`)
     } else {
       q.options.forEach((opt, i) => {
-        if (!opt.label || !opt.text) {
+        if (!opt || !opt.label || !opt.text) {
           errors.push(`第 ${num} 题（单选）：第 ${i + 1} 个选项缺少 label 或 text`)
         }
       })
@@ -92,7 +96,7 @@ function validateQuestion(q, num) {
       errors.push(`第 ${num} 题（多选）：options 至少需要 3 个选项`)
     } else {
       q.options.forEach((opt, i) => {
-        if (!opt.label || !opt.text) {
+        if (!opt || !opt.label || !opt.text) {
           errors.push(`第 ${num} 题（多选）：第 ${i + 1} 个选项缺少 label 或 text`)
         }
       })

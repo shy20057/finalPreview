@@ -9,19 +9,20 @@
       <h2 class="visual-title">期末复习题库系统</h2>
       <p class="visual-tagline">AI 赋能 · 高效备考 · 智能解析</p>
       <div class="visual-features">
-        <div class="feature-chip" v-for="f in features" :key="f">{{ f }}</div>
+        <div class="feature-chip" v-for="f in features" :key="f">{{ f }}</div> <!--// TODO-->
       </div>
     </div>
 
     <!-- 右侧表单区 -->
     <div class="form-zone">
-      <!-- 模式切换 Tab -->
+      <!-- 模式切换 Tab --> <!--TODO-->
       <div v-if="!isDemoMode" class="mode-tabs">
         <button
           class="mode-tab"
           :class="{ active: mode === 'login' }"
           @click="switchMode('login')"
         >登 录</button>
+        <!--TODO-->
         <button
           class="mode-tab"
           :class="{ active: mode === 'register' }"
@@ -159,10 +160,11 @@ async function onRegister() {
   } finally { loading.value = false }
 }
 
-// 星空动画
+// 星空动画 todo
 const canvasRef = ref(null)
 let rafId = null
 
+// todo
 onMounted(() => {
   const canvas = canvasRef.value
   if (!canvas) return

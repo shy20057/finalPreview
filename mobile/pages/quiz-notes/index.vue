@@ -33,10 +33,13 @@
 
     <!-- 搜索和筛选 -->
     <view class="filter-bar">
-      <view class="search-box">
+      <view class="search-box text-field">
         <AppIcon name="i86163e22" :size="16" />
         <input
           v-model="searchText"
+          class="text-field-native"
+          placeholder-class="text-field-placeholder"
+          placeholder-style="font-size: 16px;"
           type="text"
           placeholder="搜索题目或笔记内容..."
         />
@@ -381,7 +384,9 @@ async function handleDelete(note) {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  width: 0;
+  min-width: 0;
+  padding: 0 12px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -396,20 +401,6 @@ async function handleDelete(note) {
 .search-box .app-icon {
   color: var(--text-muted);
   flex-shrink: 0;
-}
-
-.search-box input {
-  flex: 1;
-  border: none;
-  background: none;
-  outline: none;
-  font-family: inherit;
-  font-size: 0.875rem;
-  color: var(--text-primary);
-}
-
-.search-box input::placeholder {
-  color: var(--text-muted);
 }
 
 .filter-select {
@@ -662,6 +653,11 @@ async function handleDelete(note) {
 
   .filter-bar {
     flex-direction: column;
+  }
+
+  .search-box {
+    flex: none;
+    width: 100%;
   }
 
   .filter-select {

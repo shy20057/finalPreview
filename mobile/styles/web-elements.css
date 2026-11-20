@@ -33,7 +33,7 @@ view, text, image, input, textarea, button, scroll-view, form { box-sizing: bord
   box-sizing: border-box; margin: 0; padding: 0;
 }
 /* #endif */
-.auth-placeholder { color: rgba(150, 150, 176, 0.45); }
+.auth-placeholder { color: #a8b2c5; font-size: 16px; }
 .fp-gap-left { margin-left: calc(var(--fp-gap-margin) + var(--fp-gap-size)) !important; }
 .fp-gap-top { margin-top: calc(var(--fp-gap-margin) + var(--fp-gap-size)) !important; }
 .fp-gap-right { margin-right: calc(var(--fp-gap-right-margin) + var(--fp-gap-size)) !important; }

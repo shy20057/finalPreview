@@ -17,7 +17,9 @@
               <input
                 ref="inputRef"
                 v-model="query" :focus="isOpen" @confirm="selectActive"
-                class="cmd-input"
+                class="cmd-input text-field-native"
+                placeholder-class="text-field-placeholder"
+                placeholder-style="font-size: 16px;"
                 :placeholder="placeholder"
               />
               <text class="web-kbd cmd-kbd cmd-kbd-esc">esc</text>
@@ -397,16 +399,7 @@ defineExpose({ open, close, isOpen })
 
 .cmd-input {
   flex: 1;
-  border: none;
-  background: transparent;
-  font-family: inherit;
-  font-size: 1rem;
-  color: var(--text-primary);
-  outline: none;
-}
-
-.cmd-input::placeholder {
-  color: var(--text-muted);
+  min-width: 0;
 }
 
 .cmd-kbd-esc {

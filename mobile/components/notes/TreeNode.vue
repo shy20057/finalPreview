@@ -41,16 +41,17 @@
           class="node-title"
           @dblclick.stop="startRename"
         >{{ node.title }}</text>
-        <input
-          v-else
-          ref="renameInput"
-          v-model="renameValue"
-          class="rename-input input" :focus="renaming"
-          @blur="commitRename"
-          @confirm="commitRename"
-          @keydown.escape="cancelRename"
-          @click.stop
-        />
+        <view v-else class="rename-input text-field" @click.stop>
+          <input
+            ref="renameInput"
+            v-model="renameValue"
+            class="text-field-native" :focus="renaming"
+            @blur="commitRename"
+            @confirm="commitRename"
+            @keydown.escape="cancelRename"
+            @click.stop
+          />
+        </view>
 
         <!-- 右键菜单按钮 -->
         <button class="web-button node-menu btn btn-ghost btn-sm" @click.stop="menuOpen = !menuOpen">
@@ -260,8 +261,8 @@ async function deleteCurrentNode() {
 }
 .rename-input {
   flex: 1;
-  font-size: 0.875rem;
-  padding: 2px 6px;
+  width: 0;
+  min-width: 0;
 }
 .node-menu {
   opacity: 0;

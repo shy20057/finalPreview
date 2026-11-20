@@ -5,15 +5,16 @@
   shell became a component that every page renders.
 -->
 <template>
-  <view class="app" :class="themeClass" @click="pageTap">
+  <view class="app" :class="themeClass" :style="shellInsets" @click="pageTap">
     <!-- 背景氛围层（原 body::before） -->
     <view class="ambient-bg">
       <!-- #ifdef MP-WEIXIN -->
-      <image class="ambient-image" :src="appStore.theme === 'light' ? '/static/assets/images/sunflowers.jpg' : '/static/assets/images/starry-night.jpg'" mode="aspectFill" />
+      <image class="ambient-image" :src="appStore.theme === 'light' ? '/static/mp-weixin/sunflowers.jpg' : '/static/assets/images/starry-night.jpg'" mode="aspectFill" />
       <view class="ambient-shade" />
       <!-- #endif -->
     </view>
 
+    <!-- #ifndef MP-WEIXIN -->
     <!-- 顶栏 -->
     <view class="app-header">
       <view class="header-inner">
@@ -58,6 +59,7 @@
         </view>
       </view>
     </view>
+    <!-- #endif -->
 
     <!-- 移动端抽屉 -->
     <MobileDrawer ref="drawerRef" />
@@ -66,9 +68,47 @@
     <FloatingIslandMenu ref="islandRef" />
 
     <!-- 主内容区 -->
-    <view class="app-main">
+    <scroll-view
+      v-if="scrollable"
+      class="app-main app-main-scroll"
+      scroll-y
+      :scroll-into-view="scrollIntoView"
+    >
+      <view class="app-scroll-content">
+        <slot />
+      </view>
+    </scroll-view>
+    <view v-else class="app-main">
       <slot />
     </view>
+
+    <!-- #ifdef MP-WEIXIN -->
+    <!-- Occupies its own flex row so the last content item stays above the bar. -->
+    <view class="bottom-nav" role="navigation" aria-label="主导航">
+      <button
+        v-for="link in mobileNavLinks"
+        :key="link.path"
+        class="web-button bottom-nav-item"
+        :class="{ 'bottom-nav-active': isMobileActive(link) }"
+        :aria-label="link.label"
+        :aria-current="isMobileActive(link) ? 'page' : undefined"
+        @tap.stop="goMobile(link.path)"
+      >
+        <AppIcon :path="link.iconPath" :size="22" />
+        <text class="bottom-nav-label">{{ link.label }}</text>
+      </button>
+      <button
+        class="web-button bottom-nav-item"
+        :class="{ 'bottom-nav-active': moreActive || drawerRef?.isOpen }"
+        aria-label="更多导航"
+        :aria-expanded="!!drawerRef?.isOpen"
+        @tap.stop="openDrawer()"
+      >
+        <AppIcon name="i103023a7" :size="22" />
+        <text class="bottom-nav-label">更多</text>
+      </button>
+    </view>
+    <!-- #endif -->
 
     <!-- 彩纸特效层 -->
     <ConfettiLayer />
@@ -78,7 +118,7 @@
 
 <script>
 import { computed, watch, ref, provide } from 'vue'
-import { onShow, onHide, onBackPress } from '@dcloudio/uni-app'
+import { onShow, onHide, onBackPress, onResize } from '@dcloudio/uni-app'
 import { useAppStore } from '../stores/app.js'
 import { useAuthStore } from '../stores/auth.js'
 import { useRoute, useRouter } from '../utils/router.js'
@@ -91,6 +131,10 @@ import UiBridge from './UiBridge.vue'
 
 export default {
   name: 'AppShell',
+  props: {
+    scrollable: Boolean,
+    scrollIntoView: { type: String, default: '' },
+  },
   components: { DynamicBadge, CommandPalette, FloatingIslandMenu, MobileDrawer, ConfettiLayer, UiBridge },
   setup() {
     const appStore = useAppStore()
@@ -103,7 +147,28 @@ export default {
     const drawerRef = ref(null)
     const commandRef = ref(null)
     const islandRef = ref(null)
-    onShow(() => { pageActive.value = true })
+    const shellInsets = ref({})
+    function updateShellInsets() {
+      // #ifdef MP-WEIXIN
+      try {
+        const info = uni.getWindowInfo ? uni.getWindowInfo() : uni.getSystemInfoSync()
+        const menu = uni.getMenuButtonBoundingClientRect?.()
+        const statusBarHeight = Math.max(info.statusBarHeight || 0, info.safeArea?.top || 0)
+        const top = menu?.bottom > statusBarHeight ? menu.bottom + 8 : statusBarHeight + 44
+        const bottom = info.safeAreaInsets?.bottom ??
+          (info.safeArea ? (info.screenHeight || info.windowHeight) - info.safeArea.bottom : 0)
+        shellInsets.value = {
+          '--shell-top-inset': `${top}px`,
+          '--shell-bottom-inset': `${Math.max(0, bottom)}px`,
+        }
+      } catch {
+        // CSS safe-area fallbacks also work before window information is ready.
+      }
+      // #endif
+    }
+    updateShellInsets()
+    onResize(updateShellInsets)
+    onShow(() => { pageActive.value = true; updateShellInsets() })
     onHide(() => {
       pageActive.value = false
       drawerRef.value?.close()
@@ -135,11 +200,25 @@ export default {
     const isActive = (link) =>
       link.exact ? route.path === link.path : route.path.startsWith(link.path)
 
+    const mobileNavLinks = [
+      { path: '/', label: '首页', exact: true, iconPath: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10' },
+      { path: '/banks', label: '题库', iconPath: 'M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z' },
+      { path: '/wrongbook', label: '错题', iconPath: 'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M15 9l-6 6 M9 9l6 6' },
+      { path: '/profile', label: '我的', iconPath: 'M20 21a8 8 0 0 0-16 0 M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10z' },
+    ]
+    const isMobileActive = (link) => isActive(link) ||
+      (link.path === '/banks' && (route.path.startsWith('/quiz/') || route.path.startsWith('/result/')))
+
     return {
       appStore,
       authStore,
       navLinks,
       isActive,
+      mobileNavLinks,
+      isMobileActive,
+      moreActive: computed(() => !mobileNavLinks.some(isMobileActive)),
+      goMobile: (path) => { if (route.path !== path) router.push(path) },
+      shellInsets,
       themeClass: computed(() => `theme-${appStore.theme}`),
       themeTitle: computed(() => (appStore.theme === 'light' ? '浅色主题' : '暗蓝风格')),
       avatarLetter: computed(() => (authStore.username || '').slice(0, 1).toUpperCase()),
@@ -164,7 +243,57 @@ export default {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 }
+
+/* #ifdef MP-WEIXIN */
+.app {
+  --shell-bottom-nav-height: calc(65px + var(--shell-bottom-inset, env(safe-area-inset-bottom, 0px)));
+  padding-top: var(--shell-top-inset, calc(44px + env(safe-area-inset-top, 0px)));
+}
+
+.bottom-nav {
+  position: relative;
+  z-index: 100;
+  display: flex;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--shell-bottom-nav-height);
+  padding: 6px 8px;
+  padding-bottom: calc(6px + var(--shell-bottom-inset, env(safe-area-inset-bottom, 0px)));
+  padding-left: max(8px, env(safe-area-inset-left, 0px));
+  padding-right: max(8px, env(safe-area-inset-right, 0px));
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.bottom-nav-item {
+  flex: 1;
+  min-width: 0;
+  height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  color: var(--text-secondary);
+}
+
+.bottom-nav-label {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.bottom-nav-active {
+  color: var(--accent-primary);
+  background: var(--accent-soft);
+}
+/* #endif */
 
 .app-header {
   flex-shrink: 0;
@@ -324,6 +453,20 @@ export default {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+}
+
+.app-main-scroll {
+  /* Let the native scroller own the height left above the bottom navigation. */
+  height: 0;
+  display: block;
+  overflow: hidden;
+  padding: 0;
+}
+
+.app-scroll-content {
+  box-sizing: border-box;
+  min-height: 100%;
+  padding: 1rem;
 }
 
 .hamburger {

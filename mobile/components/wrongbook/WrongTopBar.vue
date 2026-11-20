@@ -1,11 +1,15 @@
 <template>
   <view class="wrong-topbar">
-    <input
-      class="search-input"
-      :value="wrongBook.keyword"
-      @input="onInput"
-      placeholder="搜索题干关键词..."
-    />
+    <view class="search-input text-field">
+      <input
+        class="text-field-native"
+        placeholder-class="text-field-placeholder"
+        placeholder-style="font-size: 16px;"
+        :value="wrongBook.keyword"
+        @input="onInput"
+        placeholder="搜索题干关键词..."
+      />
+    </view>
     <view class="sort-control">
       <text class="text-muted sort-label">排序</text>
       <view
@@ -135,19 +139,13 @@ function formatAnswer(a) {
 
 .search-input {
   flex: 1;
-  padding: 0.55rem 0.875rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-size: 0.9rem;
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  width: 0;
+  min-width: 0;
   position: relative;
   z-index: 41;
 }
 
-.search-input:focus {
+.search-input:focus-within {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
@@ -273,5 +271,16 @@ function formatAnswer(a) {
 .wrong-topbar .btn {
   position: relative;
   z-index: 41;
+}
+
+@media (max-width: 768px) {
+  .wrong-topbar {
+    flex-wrap: wrap;
+  }
+
+  .search-input {
+    flex: 0 0 100%;
+    width: 100%;
+  }
 }
 </style>

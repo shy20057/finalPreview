@@ -9,7 +9,7 @@
           </view>
           <view>
             <view class="modal-title">导入题库</view>
-            <text class="header-subtitle">从 Markdown 文件导入，或用 AI 生成</text>
+            <text class="header-subtitle">从 JSON 文件导入，或用 AI 生成</text>
           </view>
         </view>
         <view class="close-btn" @click="closeModal" aria-label="关闭">
@@ -48,11 +48,11 @@
               <view class="upload-icon">
                 <AppIcon name="ib57f0e77" :size="48" />
               </view>
-              <view class="upload-text">拖拽 .md 文件到此处</view>
-              <view class="upload-hint">或点击此处选择文件</view>
+              <view class="upload-text">点击选择 .json 文件</view>
+              <view class="upload-hint">选择 AI 生成或手动整理的 JSON 题库</view>
               <view class="upload-formats">
-                <text class="format-chip">.md</text>
-                <text class="format-chip">含 ```json 代码块</text>
+                <text class="format-chip">.json</text>
+                <text class="format-chip">纯 JSON 对象</text>
               </view>
             </view>
 
@@ -64,7 +64,7 @@
             <!-- 没有文件？引导用户看右栏 -->
             <view class="no-file-hint">
               <AppIcon name="i2f64d701" :size="14" />
-              <text>没有 .md 文件？查看右侧"AI 生成"流程</text>
+              <text>没有 .json 文件？查看右侧"AI 生成"流程</text>
             </view>
           </view>
 
@@ -143,15 +143,15 @@
               <view class="ai-step">
                 <text class="step-marker">2</text>
                 <view>
-                  <view class="ai-step-title">粘贴学习通原题</view>
-                  <view class="ai-step-desc">把提示词末尾的"[粘贴学习通内容]"替换为题目文本</view>
+                  <view class="ai-step-title">填写出题需求或参考材料</view>
+                  <view class="ai-step-desc">选择自主出题并填写需求，或粘贴原题仅做格式整理</view>
                 </view>
               </view>
               <view class="ai-step">
                 <text class="step-marker">3</text>
                 <view>
-                  <view class="ai-step-title">保存为 .md 文件</view>
-                  <view class="ai-step-desc">AI 输出的 Markdown 保存为 .md 后上传到左侧</view>
+                  <view class="ai-step-title">下载并上传 .json 文档</view>
+                  <view class="ai-step-desc">下载 AI 生成的 .json 文档后上传，文件内容须为 JSON 对象</view>
                 </view>
               </view>
             </view>
@@ -170,9 +170,9 @@
           <view class="guide-section">
             <view class="guide-section-header">
               <text class="guide-badge guide-badge-fmt">格式</text>
-              <view class="guide-title">Markdown 结构</view>
+              <view class="guide-title">JSON 结构</view>
             </view>
-            <view class="guide-desc">.md 文件需包含 <text class="code-inline">```json</text> 代码块：</view>
+            <view class="guide-desc">.json 文件直接保存以下结构，不要添加代码块标记；示例包含四种题型：</view>
             <view class="code-block">
               <view class="code-pre">{{ codeSample }}</view>
             </view>
@@ -204,8 +204,9 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { parseMdBank } from '../utils/parser.js'
+import { parseJsonBank } from '../utils/parser.js'
 import { validateBank } from '../utils/validator.js'
+import { bankImportPrompt as promptText, bankJsonExample as codeSample } from '../utils/bankImportTemplate.js'
 import { pickTextFile } from '../utils/fs.js'
 
 const emit = defineEmits(['close', 'import'])
@@ -234,46 +235,6 @@ function typeLabel(t) {
   return { single: '单选', multi: '多选', fill: '填空', essay: '简答' }[t] || t
 }
 
-const promptText = `请将以下从学习通导出的题库文本整理为 Markdown 格式，其中题库数据以 \`\`\`json 的代码块形式包裹。
-
-要求：
-1. 外层 Markdown 包含标题（如"# 操作系统 - IO设备"）和简短介绍。
-2. 代码块内的 JSON 数据必须包含 name（题库名称）、subject（学科）和 questions 数组。
-3. 题目类型 type 为 "single"（单选题）、"multi"（多选题）、"fill"（填空题）或 "essay"（简答题）。
-4. 单选题包含 options（[{label, text}] 数组）和 answer（"A"/"B"/"C"/"D"）。
-5. 多选题包含 options（[{label, text}] 数组）和 answer（["A", "C"] 数组形式，至少两个正确答案）。
-6. 填空题包含 blanks（填空数量）和 answer（答案数组）。
-7. 简答题包含 answer（参考答案文本字符串）。
-8. 单选题和多选题的 options 要去掉序号前缀（如"（1）"、"（2）"），只保留实际选项文本。
-9. 填空题的 answer 数组必须使用标准答案，不要保留"我的答案"。
-10. 如果题干中有图片引用（如"xxx图.png"），保留题干原样即可。
-11. 分值统一用 score 字段（如 2.8、2.9、5.0）。
-
-以下是原始文本：
-[粘贴学习通内容]`
-
-// 原版这段代码示例是 <pre> 的字面文本；App 端模板编译器会把纯文本节点里的换行
-// 折叠成空格，所以改成脚本里的字符串，渲染时原样输出。
-const codeSample = `\`\`\`json
-{
-  "name": "题库名称",
-  "subject": "学科",
-  "questions": [
-    {
-      "id": 1,
-      "type": "single",
-      "question": "题干",
-      "options": [
-        { "label": "A", "text": "选项A" },
-        { "label": "B", "text": "选项B" }
-      ],
-      "answer": "A",
-      "score": 2.8
-    }
-  ]
-}
-\`\`\``
-
 function closeModal() {
   emit('close')
 }
@@ -286,13 +247,13 @@ function onOverlayClick(event) {
 }
 
 // 原版：<input type="file"> + FileReader + 拖拽。
-// App 端用 uni.chooseFile（见 utils/fs.js 的 pickTextFile）选择 .md 文件。
+// App 端用 uni.chooseFile（见 utils/fs.js 的 pickTextFile）选择 .json 文件。
 async function pickFile() {
   try {
-    const { filename, content } = await pickTextFile()
-    if (!/\.md$/i.test(filename)) {
+    const { filename, content } = await pickTextFile(['.json'])
+    if (!/\.json$/i.test(filename)) {
       hasError.value = true
-      errorMessage.value = '请上传 .md 格式的文件'
+      errorMessage.value = '请上传 .json 格式的文件'
       return
     }
     await processFile({ name: filename, content })
@@ -312,7 +273,7 @@ async function processFile(file) {
 
   try {
     const content = file.content
-    const { success, data, error } = parseMdBank(content)
+    const { success, data, error } = parseJsonBank(content)
     if (!success) {
       hasError.value = true
       errorMessage.value = error || 'JSON 解析失败'

@@ -84,10 +84,10 @@
                     :class="`stagger-${(index % 6) + 1}`"
                   >
                     <view class="bank-td-el bank-name-cell">
-                      <view v-if="editingBankId === bank.id" class="bank-name-edit">
+                      <view v-if="editingBankId === bank.id" class="bank-name-edit text-field">
                         <input
                           v-model="editingName"
-                          class="input"
+                          class="text-field-native"
                           :focus="true"
                           @confirm="saveEditing"
                           @blur="saveEditing"
@@ -150,10 +150,10 @@
                   :class="`stagger-${(index % 6) + 1}`"
                 >
                   <view class="bank-td-el bank-name-cell">
-                    <view v-if="editingBankId === bank.id" class="bank-name-edit">
+                    <view v-if="editingBankId === bank.id" class="bank-name-edit text-field">
                       <input
                         v-model="editingName"
-                        class="input"
+                        class="text-field-native"
                         :focus="true"
                         @confirm="saveEditing"
                         @blur="saveEditing"
@@ -514,10 +514,8 @@ onPageReady(async () => {
   color: var(--accent-primary);
 }
 
-.bank-name-edit input {
+.bank-name-edit {
   width: 100%;
-  padding: 0.375rem 0.625rem;
-  font-size: 0.9rem;
 }
 
 .actions {

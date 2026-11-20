@@ -1,7 +1,7 @@
 <!-- mobile/pages/quiz/index.vue -->
 <!-- uni-app port of src/views/QuizView.vue -->
 <template>
-  <AppShell>
+  <AppShell :scrollable="nativeQuizScroll" :scroll-into-view="questionScrollTarget">
   <view class="quiz-view" :class="{ 'submission-locked': completionPayload }">
     <!-- Quiz Header -->
     <view class="quiz-header">
@@ -125,7 +125,7 @@
         </view>
 
         <!-- Question content -->
-        <view v-else class="question-wrapper animate-fadeIn" :key="`${quizStore.bankId}:${quizStore.currentQuestion?.id}`">
+        <view v-else id="quiz-question-top" class="question-wrapper animate-fadeIn" :key="`${quizStore.bankId}:${quizStore.currentQuestion?.id}`">
           <view class="question-card card">
             <SingleChoice
               v-if="quizStore.currentQuestion.type === 'single'"
@@ -368,7 +368,7 @@ import { readPendingSubmission, writePendingSubmission, clearPendingSubmission }
 import { onPageReady } from '../../composables/usePageReady.js'
 const initializePage = callback => onPageReady(callback, { refresh: false })
 
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from '../../utils/router.js'
 import { useBankStore } from '../../stores/bank.js'
 import { useQuizStore } from '../../stores/quiz.js'
@@ -391,6 +391,19 @@ const bankStore = useBankStore()
 const quizStore = useQuizStore()
 const historyStore = useHistoryStore()
 const favoriteStore = useFavoriteStore()
+
+let nativeQuizScroll = false
+// #ifdef MP-WEIXIN
+nativeQuizScroll = true
+// #endif
+const questionScrollTarget = ref('')
+watch(() => quizStore.currentQuestion?.id, async (id, previousId) => {
+  if (!nativeQuizScroll || id == null || previousId == null || id === previousId) return
+  // A long previous question must not leave the next question scrolled halfway down.
+  questionScrollTarget.value = ''
+  await nextTick()
+  questionScrollTarget.value = 'quiz-question-top'
+})
 
 const showExitConfirm = ref(false)
 
@@ -699,6 +712,7 @@ initializePage(async () => {
   flex-direction: column;
   gap: 0.75rem;
   margin-bottom: 0.5rem;
+  flex-shrink: 0;
 }
 
 .quiz-header-main {
@@ -862,6 +876,7 @@ initializePage(async () => {
 .question-wrapper {
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
 }
 
 .question-card {
@@ -1247,27 +1262,64 @@ initializePage(async () => {
 
 @media (max-width: 768px) {
   .quiz-layout {
-    grid-template-columns: 1fr;
+    display: block;
+    height: auto;
+    overflow: visible;
   }
 
   .quiz-view {
-    padding-bottom: 72px;
+    height: auto;
+    overflow: visible;
+    flex-shrink: 0;
+    padding-bottom: 0;
+  }
+
+  .center-panel,
+  .quiz-content {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+
+  .question-wrapper {
+    display: block;
+    /* Avoid keeping a transformed containing block after the entry animation. */
+    animation: none;
   }
 
   .mobile-action-bar {
     display: flex;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    gap: 8px;
+    padding: 8px 0;
+    margin-bottom: 12px;
+  }
+
+  .action-btn {
+    width: 40px;
+    height: 44px;
+    flex-shrink: 0;
   }
 
   .bottom-nav-bar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 90;
-    background: var(--bg-surface);
-    border-top: 1px solid var(--border-color);
-    padding: 0.6rem 1rem;
-    padding-bottom: calc(0.6rem + env(safe-area-inset-bottom, 0px));
+    position: static;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 0;
+    margin-top: 12px;
+    background: transparent;
+    border-top: none;
+  }
+
+  .bottom-nav-bar > .btn {
+    flex: 1;
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px 8px;
+    font-size: 14px;
+    white-space: nowrap;
   }
 
   .quiz-header {
@@ -1281,6 +1333,7 @@ initializePage(async () => {
   }
 
   .quiz-title {
+    width: 100%;
     flex-wrap: wrap;
     gap: 0.5rem;
   }
@@ -1288,22 +1341,18 @@ initializePage(async () => {
   .quiz-title > text {
     font-size: 1.2rem;
     width: 100%;
+    overflow-wrap: anywhere;
   }
 
   .question-card {
     padding: 1rem;
-    padding-bottom: 80px;
   }
 
   .nav-counter {
+    flex-shrink: 0;
     font-size: 0.8rem;
-  }
-
-  .single-choice,
-  .multiple-choice,
-  .fill-blank,
-  .essay-question {
-    padding-bottom: 80px;
+    white-space: nowrap;
+    text-align: center;
   }
 }
 </style>

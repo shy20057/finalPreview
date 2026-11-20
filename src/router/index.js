@@ -21,6 +21,11 @@ const routes = [
   { path: '/history', name: 'history', component: HistoryView },
   { path: '/wrongbook', name: 'wrongbook', component: WrongBookView },
   { path: '/favorites', name: 'favorites', component: FavoriteView },
+  {
+    path: '/agent',
+    name: 'agent',
+    component: () => import('../views/AgentView.vue'),
+  },
   { path: '/resources', name: 'resources', component: ResourcesView },
   { path: '/settings', name: 'settings', component: SettingsView },
   { path: '/profile', name: 'profile', component: ProfileView },

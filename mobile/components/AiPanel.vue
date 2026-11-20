@@ -101,18 +101,20 @@
 
     <!-- Chat Input -->
     <view v-if="appStore.isAiConfigured()" class="ai-input-bar">
-      <input
-        ref="inputRef"
-        v-model="chatInput"
-        class="input ai-input"
-        type="text"
-        placeholder="向 上上帮 提问..."
-        placeholder-class="input-placeholder"
-        :disabled="loading"
-        :class="{ disabled: loading }"
-        confirm-type="send"
-        @confirm="sendChat"
-      />
+      <view class="text-field ai-input" :class="{ disabled: loading }">
+        <input
+          ref="inputRef"
+          v-model="chatInput"
+          class="text-field-native"
+          type="text"
+          placeholder="向 上上帮 提问..."
+          placeholder-class="text-field-placeholder"
+          placeholder-style="font-size: 16px;"
+          :disabled="loading"
+          confirm-type="send"
+          @confirm="sendChat"
+        />
+      </view>
       <view class="send-btn" :class="{ disabled: !chatInput.trim() || loading }" @click="sendChat">
         <AppIcon name="i7dadb077" :size="16" />
       </view>
@@ -798,20 +800,15 @@ function truncate(str, len) {
 /* Input bar */
 .ai-input-bar {
   display: flex;
+  align-items: center;
   gap: 0.4rem;
   flex-shrink: 0;
 }
 
 .ai-input-bar .ai-input {
   flex: 1;
-  padding: 0.5rem 0.75rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  font-family: inherit;
-  font-size: 0.85rem;
-  color: var(--text-primary);
-  transition: border-color 0.15s ease;
+  width: 0;
+  min-width: 0;
 }
 
 .ai-input-bar .ai-input:focus-within {
@@ -825,8 +822,8 @@ function truncate(str, len) {
 }
 
 .send-btn {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
