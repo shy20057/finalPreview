@@ -2,34 +2,28 @@ import { readTextFile } from './fs.js'
 
 /**
  * 题库解析器
- * 从 Markdown 文件中提取 JSON 代码块并解析为题库数据
+ * 从 JSON 文件中解析题库数据
  * —— uni-app port of src/utils/parser.js
  */
 
 /**
- * 从 Markdown 内容中提取 JSON 数据
- * @param {string} mdContent - Markdown 文件内容
+ * 解析纯 JSON 内容（允许 UTF-8 BOM 和首尾空白）
+ * @param {string} content - JSON 文件内容
  * @returns {{ success: boolean, data: Object|null, error: string|null }}
  */
-export function parseMdBank(mdContent) {
-  if (!mdContent || typeof mdContent !== 'string') {
+export function parseJsonBank(content) {
+  if (typeof content !== 'string' || !content.trim()) {
     return { success: false, data: null, error: '文件内容为空' }
   }
 
-  // 查找 ```json ... ``` 代码块
-  // 支持 ```json 和 ``` 之间的内容
-  const jsonBlockRegex = /```json\s*\n([\s\S]*?)```/
-  const match = mdContent.match(jsonBlockRegex)
-
-  if (!match || !match[1]) {
+  const jsonStr = content.replace(/^\uFEFF/, '').trim()
+  if (jsonStr.startsWith('```') || jsonStr.startsWith('#')) {
     return {
       success: false,
       data: null,
-      error: '未找到 JSON 代码块。请确保 Markdown 文件中包含 ```json ... ``` 格式的代码块'
+      error: '请上传纯 JSON 内容，不要包含 Markdown 标题或 ```json 代码块标记'
     }
   }
-
-  const jsonStr = match[1].trim()
 
   try {
     const data = JSON.parse(jsonStr)
@@ -38,7 +32,7 @@ export function parseMdBank(mdContent) {
     return {
       success: false,
       data: null,
-      error: `JSON 解析失败: ${e.message}`
+      error: `JSON 解析失败：${e.message}。请检查双引号、逗号及转义字符`
     }
   }
 }
@@ -98,14 +92,14 @@ const builtinGuideBank = {
       type: 'multi',
       question: '以下哪些方式可以向题库导入题目？（多选）',
       options: [
-        { label: 'A', text: '点击"导入题库"按钮上传 Markdown 文件' },
+        { label: 'A', text: '点击"导入题库"按钮上传 JSON 文件' },
         { label: 'B', text: '复制 AI 提示词到 ChatGPT 等工具生成 JSON，再上传' },
         { label: 'C', text: '直接在浏览器地址栏输入题目' },
         { label: 'D', text: '通过导入弹窗内的格式说明了解 JSON 结构后手动编写' },
       ],
       answer: ['A', 'B', 'D'],
       score: 3.0,
-      explanation: '导入弹窗右侧有常驻格式说明和 AI 提示词，支持上传 Markdown 文件（内含 JSON 代码块），也可用 AI 生成后再上传。',
+      explanation: '导入弹窗右侧有常驻格式说明和 AI 提示词，支持直接上传 .json 文件，也可用 AI 生成后再上传。',
     },
     {
       id: 4,

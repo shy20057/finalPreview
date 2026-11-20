@@ -40,14 +40,15 @@
       >
         <view class="blank-row">
           <text class="blank-number">{{ index + 1 }}</text>
-          <view class="input-wrapper">
+          <view class="input-wrapper text-field">
             <input
               type="text"
               v-model="userAnswers[index]"
               :disabled="submitted || batchMode"
               :placeholder="submitted ? '' : '请输入答案'"
-              placeholder-class="input-placeholder"
-              class="input blank-input"
+              placeholder-class="text-field-placeholder"
+              placeholder-style="font-size: 16px;"
+              class="text-field-native"
               :focus="focusedBlank === index"
               @focus="focusedBlank = index"
               @confirm="handleEnter(index)"
@@ -283,11 +284,8 @@ function handleBatchDelete() {
   align-items: center;
   gap: 0.5rem;
   flex: 1;
-}
-
-.blank-input {
-  flex: 1;
-  padding: 0.6rem 0.875rem;
+  width: 0;
+  min-width: 0;
 }
 
 .blank-status {

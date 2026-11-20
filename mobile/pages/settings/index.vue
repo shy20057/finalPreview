@@ -54,44 +54,56 @@
 
         <view class="form-group">
           <text class="form-label">厂商名称</text>
-          <input
-            v-model="aiForm.name"
-            type="text"
-            placeholder="deepseek / openai / ..."
-            placeholder-class="input-placeholder"
-            class="form-input"
-            :disabled="isEditingExisting"
-          />
+          <view class="form-input text-field">
+            <input
+              v-model="aiForm.name"
+              type="text"
+              placeholder="deepseek / openai / ..."
+              placeholder-class="text-field-placeholder"
+              placeholder-style="font-size: 16px;"
+              class="text-field-native"
+              :disabled="isEditingExisting"
+            />
+          </view>
         </view>
         <view class="form-group">
           <text class="form-label">API Base URL</text>
-          <input
-            v-model="aiForm.baseUrl"
-            type="text"
-            placeholder="https://api.openai.com/v1"
-            placeholder-class="input-placeholder"
-            class="form-input"
-          />
+          <view class="form-input text-field">
+            <input
+              v-model="aiForm.baseUrl"
+              type="text"
+              placeholder="https://api.openai.com/v1"
+              placeholder-class="text-field-placeholder"
+              placeholder-style="font-size: 16px;"
+              class="text-field-native"
+            />
+          </view>
         </view>
         <view class="form-group">
           <text class="form-label">API Key</text>
-          <input
-            v-model="aiForm.apiKey"
-            password
-            placeholder="sk-..."
-            placeholder-class="input-placeholder"
-            class="form-input"
-          />
+          <view class="form-input text-field">
+            <input
+              v-model="aiForm.apiKey"
+              password
+              placeholder="sk-..."
+              placeholder-class="text-field-placeholder"
+              placeholder-style="font-size: 16px;"
+              class="text-field-native"
+            />
+          </view>
         </view>
         <view class="form-group">
           <text class="form-label">模型名称</text>
-          <input
-            v-model="aiForm.model"
-            type="text"
-            placeholder="gpt-3.5-turbo"
-            placeholder-class="input-placeholder"
-            class="form-input"
-          />
+          <view class="form-input text-field">
+            <input
+              v-model="aiForm.model"
+              type="text"
+              placeholder="gpt-3.5-turbo"
+              placeholder-class="text-field-placeholder"
+              placeholder-style="font-size: 16px;"
+              class="text-field-native"
+            />
+          </view>
         </view>
         <view class="ai-actions">
           <view class="btn btn-primary" @click="saveAiConfig">保存配置</view>
@@ -564,17 +576,9 @@ async function resetAll() {
 
 .form-input {
   width: 100%;
-  padding: 0.625rem 0.75rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  font-family: inherit;
-  font-size: 0.9rem;
-  color: var(--text-primary);
-  transition: border-color 0.15s ease;
 }
 
-.form-input:focus {
+.form-input:focus-within {
   outline: none;
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px var(--accent-soft);

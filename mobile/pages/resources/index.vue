@@ -844,6 +844,12 @@ onUnmounted(() => {
   font-size: 0.875rem;
 }
 
+/* #ifdef MP-WEIXIN */
+.undo-toast {
+  bottom: calc(1.5rem + var(--shell-bottom-nav-height, 0px));
+}
+/* #endif */
+
 .undo-text {
   color: var(--text-secondary);
 }

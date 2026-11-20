@@ -16,10 +16,11 @@ Two clients share one backend:
 npm run dev      # Start dev server (http://localhost:5173), opens browser automatically
 npm run build    # Build for production
 npm run preview  # Preview production build
-npm test         # node --test tests/*.test.mjs
+npm test         # node --test tests/*.test.mjs && python -m unittest discover -s tests -p test_*.py
 
 # Backend (separate terminal)
-cd server && npm install && npm start   # Express server on port 3000
+pip install -r server/requirements.txt
+python -m uvicorn app.main:app --app-dir server --port 3000   # FastAPI server on port 3000
 
 # Mobile (HBuilderX classic project; import the mobile/ directory)
 cd mobile && npm install && npm run build:app   # → mobile/unpackage/dist/build/app
@@ -33,14 +34,24 @@ Per `AGENTS.md`, do not run tests, builds or the emulator without explicit user 
 
 ### Backend (`server/`)
 
-- **Express.js** server on port 3000
-- **SQLite** via Node.js built-in `node:sqlite` (DatabaseSync), stored at `server/data/quiz.db`
-- **Tables**: `banks`, `history`, `notes`
-- **API endpoints**: `GET/POST /api/banks`, `GET/POST/DELETE /api/history`, `GET/POST/DELETE /api/notes`, `GET /api/export`, `POST /api/import`, plus `/api/auth/*` and `/api/resources`
+- **FastAPI** server on port 3000 — entry point `server/app/main.py`, run with `python -m uvicorn app.main:app --app-dir server --port 3000`
+- **SQLite** via Python's stdlib `sqlite3` (WAL + explicit `BEGIN IMMEDIATE` transactions, no ORM), stored at `server/data/quiz.db`
+- **Tables**: `users`, `banks`, `history`, `notes`, `note_tree`, `ai_configs`, `favorites`, `quiz_sessions`
+- **Auth**: JWT (HS256) + bcrypt in `server/app/auth.py`; the signing secret stays in `server/data/auth-secret`, so tokens issued by the old Express backend still verify
+- **API endpoints**: `GET/POST /api/banks`, `GET/POST/DELETE /api/history`, `GET/POST/DELETE /api/notes`, `GET /api/export`, `POST /api/import`, plus `/api/auth/*`, `/api/resources` and `/api/agent/*`
+
+### Agent (`server/app/agent.py`)
+
+- **Stack**: LangChain tools + DeepAgents (`create_deep_agent`) on a LangGraph graph; the LLM comes from the account's default AI config (`ChatOpenAI` with an OpenAI-compatible `base_url`)
+- **Runtime context**: `AgentContext(user_id)` — the account id comes from the JWT, never from the model, so every tool query is account-scoped
+- **Human-in-the-loop**: write tools are listed in `interrupt_on`, so the graph interrupts and waits for a decision — `approve` / `edit` (`edited_action`) / `reject` (optional reason). LangGraph wants exactly one decision per pending action request.
+- **Checkpoints**: `AsyncSqliteSaver` (`server/data/checkpoints.db`) — a paused run survives a backend restart, and `GET /api/agent/history` restores it after a page reload
+- **Endpoints**: `POST /api/agent/chat`, `POST /api/agent/resume`, `GET /api/agent/history`
+- **Tools**: read-only `list_banks` / `get_bank_questions` / `list_wrong_questions` / `search_notes`; write `create_note` / `save_quiz_note` / `add_favorite` / `delete_note`
 
 ### Frontend (`src/`)
 
-**State Management (Pinia)** — 8 stores:
+**State Management (Pinia)** — 9 stores:
 - **quizStore** (`src/stores/quiz.js`) — Core quiz state: current question, answers, mode (practice/exam), scoring, wrong answers. All computed stats (correctCount, accuracy, currentScore, etc.) are derived here.
 - **bankStore** (`src/stores/bank.js`) — Bank list management: the built-in guide bank plus user-imported banks (from backend API).
 - **historyStore** (`src/stores/history.js`) — Quiz history records with stats aggregation by bank.
@@ -49,13 +60,14 @@ Per `AGENTS.md`, do not run tests, builds or the emulator without explicit user 
 - **favoriteStore** (`src/stores/favorite.js`) — Favourite questions.
 - **authStore** (`src/stores/auth.js`) — Session token and current account.
 - **appStore** (`src/stores/app.js`) — App-level state: theme and AI configuration.
+- **agentStore** (`src/stores/agent.js`) — Agent conversation: thread id, messages, pending approvals.
 
-**Routing (Vue Router, Hash History)**: `/` (home), `/banks`, `/quiz/:bankId`, `/result/:recordId`, `/history`, `/wrongbook`, `/favorites`, `/resources`, `/settings`, `/profile`, `/notes`, `/quiz-notes`, `/login`, `/register`. A `beforeEach` guard redirects unauthenticated users to `/login` with a `redirect` query.
+**Routing (Vue Router, Hash History)**: `/` (home), `/banks`, `/quiz/:bankId`, `/result/:recordId`, `/history`, `/wrongbook`, `/favorites`, `/agent`, `/resources`, `/settings`, `/profile`, `/notes`, `/quiz-notes`, `/login`, `/register`. A `beforeEach` guard redirects unauthenticated users to `/login` with a `redirect` query.
 
 **Utilities**:
 - **parser.js** (`src/utils/parser.js`) — Extracts JSON from a ` ```json ` code block in an uploaded `.md` file, and holds the built-in "项目使用指南" bank (`builtinGuideBank`).
 - **validator.js** (`src/utils/validator.js`) — Validates parsed JSON structure for both bank-level and per-question fields (type, options, answer format).
-- **api.js** (`src/utils/api.js`) — HTTP client for backend REST API (banks, history, notes).
+- **api.js** (`src/utils/api.js`) — HTTP client for backend REST API (banks, history, notes, agent).
 - **ai.js** (`src/utils/ai.js`) — AI analysis service (OpenAI/MiniMax compatible), used by AiPanel component.
 - **storage.js** (`src/utils/storage.js`) — Compatibility shim that forwards to `api.js`. Previously used IndexedDB; now uses the Express backend.
 - **clearAccountState.js** (`src/utils/clearAccountState.js`) — Resets every store when the account or backend address changes.
@@ -101,6 +113,7 @@ All other banks are user-imported and live in the backend SQLite database.
 - **Mode behavior**: Practice mode allows shuffle; exam mode forces shuffle and locks in answers.
 - **Hierarchical notes**: `noteStore` manages a tree of folders and notes, stored in backend SQLite (notes table with `parent_id` for tree structure).
 - **One backend, two clients**: the mobile app never embeds the database; it talks to the same `server/` over HTTP and therefore needs a reachable address (emulator `10.0.2.2`, real device LAN IP, production HTTPS).
+- **Agent writes need a human**: only read tools run unattended; anything that touches user data interrupts the LangGraph run and waits for an explicit decision in the web UI. The account id is injected as runtime context, so the model can never widen its own scope.
 
 ## Design System
 

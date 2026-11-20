@@ -24,6 +24,7 @@
         </div>
         <p class="text-muted">还没有收藏任何题目</p>
         <p class="text-muted text-sm">答题时点击题目右上角的星标即可收藏</p>
+<!--  todo  -->
         <router-link to="/banks" class="btn btn-primary" style="margin-top: 0.75rem;">
           去题库看看
         </router-link>
